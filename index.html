@@ -89,10 +89,9 @@
             const fileInputRef = useRef(null);
 
             useEffect(() => {
-                const saved = localStorage.getItem('life_os_ultimate');
-                if (saved) {
+                const syncData = (jsonStr) => {
                     try { 
-                        const parsed = JSON.parse(saved); 
+                        const parsed = JSON.parse(jsonStr); 
                         setData(prev => ({
                             ...defaultState,
                             ...parsed,
@@ -114,8 +113,23 @@
                         }));
                     } 
                     catch(e) { console.error("Data parse error"); }
+                };
+
+                const saved = localStorage.getItem('life_os_ultimate');
+                if (saved) {
+                    syncData(saved);
                 }
                 setLoaded(true);
+
+                // Автоматична синхронізація між відкритими вкладками
+                const handleStorageChange = (e) => {
+                    if (e.key === 'life_os_ultimate' && e.newValue) {
+                        syncData(e.newValue);
+                    }
+                };
+
+                window.addEventListener('storage', handleStorageChange);
+                return () => window.removeEventListener('storage', handleStorageChange);
             }, []);
 
             useEffect(() => {
@@ -640,9 +654,9 @@
         };
 
         const GameDevFolders = ({ data, updateData }) => {
-            const [newFolder, setNewFolder] = useState("");
+            const [newFolder, useState] = React.useState("");
             const folders = Object.keys(data.files.gamedev.folders);
-            const [activeFolder, setActiveFolder] = useState(folders[0] || "Головна");
+            const [activeFolder, setActiveFolder] = React.useState(folders[0] || "Головна");
 
             const createFolder = () => {
                 if (!newFolder.trim() || folders.includes(newFolder.trim())) return;
@@ -763,7 +777,7 @@
         };
 
         const SportsTab = ({ data, updateData }) => {
-            const [weight, setWeight] = useState("");
+            const [weight, setWeight] = React.useState("");
             
             const addWeight = () => {
                 if (!weight) return;
@@ -836,7 +850,7 @@
         };
 
         const FinanceTab = ({ data, updateData }) => {
-            const [type, setType] = useState('expense');
+            const [type, setType] = React.useState('expense');
             const categories = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
 
             const addTx = (e) => {
