@@ -1,975 +1,815 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life OS Ultimate v2</title>
-    
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life OS Ultimate — Realtime Sync</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .scroll-smooth::-webkit-scrollbar { width: 6px; height: 6px; }
-        .scroll-smooth::-webkit-scrollbar-track { background: transparent; }
-        .scroll-smooth::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
-        .glass { background: rgba(24, 24, 27, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        input, select, textarea { background: #18181b; border: 1px solid #27272a; border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: white; outline: none; transition: border 0.2s; }
-        input:focus, select:focus, textarea:focus { border-color: #6366f1; }
-        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center;}
-        .btn-primary { background: #6366f1; color: white; }
-        .btn-primary:hover { background: #4f46e5; }
-        .btn-danger { background: #e11d48; color: white; }
-        .btn-danger:hover { background: #be123c; }
-        .btn-ghost { background: transparent; color: #a1a1aa; border: 1px solid #27272a; }
-        .btn-ghost:hover { background: #27272a; color: white; }
-    </style>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+  </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-        const EXPENSE_CATS = ["Квартира", "Їжа", "Розваги", "Кредити", "Інтернет", "Здоров'я", "Розвиток", "Великі покупки", "Бажання", "Побут", "Комуналка", "Одяг", "Догляд", "Інше"];
-        const INCOME_CATS = ["Зарплата", "Бот", "Інше"];
-        const WORK_DOC_CATS = ["Отчет", "Графік", "Осмотр об'єктів", "Обладнання", "Стратегія", "Фото"];
-        const SPHERES = [
-            { id: 'work', name: 'Робота', icon: 'ph-briefcase' },
-            { id: 'bot', name: 'Бот', icon: 'ph-robot' },
-            { id: 'gamedev', name: 'GameDev', icon: 'ph-game-controller' },
-            { id: 'home', name: 'Побут', icon: 'ph-house' }
-        ];
+    // Початкові дані за замовчуванням
+    const initialData = {
+      tasks: [
+        { id: '1', title: 'Огляд торгового бота BTC', category: 'Crypto', completed: false, timeSpent: 0 },
+        { id: '2', title: 'Перевірити рівень оливи в тракторі', category: 'Workshop', completed: true, timeSpent: 1200 },
+        { id: '3', title: 'Оновити текстури в GameDev проєкті', category: 'GameDev', completed: false, timeSpent: 0 }
+      ],
+      assets: [
+        { id: '1', name: 'Player_Model_v2.fbx', folder: '3D Models', date: '2026-08-10', status: 'Готово' },
+        { id: '2', name: 'Engine_SFX_Pack.wav', folder: 'Audio', date: '2026-08-11', status: 'В процесі' }
+      ],
+      maintenance: [
+        { id: '1', unit: 'Трактор Т-40', task: 'Заміна гідравлічного фільтра', date: '2026-08-15', status: 'Заплановано' },
+        { id: '2', unit: 'Електропідмітач', task: 'Діагностика АКБ', date: '2026-08-09', status: 'Виконано' }
+      ],
+      finances: [
+        { id: '1', title: 'Сервер для бота', amount: -450, category: 'Інфраструктура', date: '2026-08-08' },
+        { id: '2', title: 'Дохід від трейдингу', amount: 8200, category: 'Крипто', date: '2026-08-10' }
+      ],
+      cryptoNotes: {
+        botStatus: 'Активний (Long Strategy)',
+        macroEma: 'BTC вище EMA 200 на 4H таймфреймі — бичачий тренд',
+        riskLimit: '1.5% на угоду'
+      },
+      lastUpdated: Date.now()
+    };
 
-        const defaultState = {
-            goals: { year: "", month: "", week: "" },
-            tasks: [], 
-            events: [], 
-            notes: { work: "", bot: "", gamedev: "", home: "" },
-            links: { work: [], bot: [], gamedev: [], home: [] },
-            files: {
-                work: { "Отчет": [], "Графік": [], "Осмотр об'єктів": [], "Обладнання": [], "Стратегія": [], "Фото": [] },
-                gamedev: { folders: { "Головна": [] } } 
-            },
-            sports: { plan: "", workouts: [], weightHistory: [] },
-            finances: { transactions: [] } 
+    function App() {
+      const [activeTab, setActiveTab] = useState('tasks');
+      const [data, setData] = useState(() => {
+        const saved = localStorage.getItem('life_os_data');
+        return saved ? JSON.parse(saved) : initialData;
+      });
+
+      // Конфігурація Supabase
+      const [supabaseConfig, setSupabaseConfig] = useState(() => {
+        const saved = localStorage.getItem('life_os_supabase_config');
+        return saved ? JSON.parse(saved) : {
+          url: '',
+          key: '',
+          syncRoom: 'life_os_main_sync'
         };
+      });
 
-        const Modal = ({ isOpen, onClose, title, children }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[#18181b] border border-[#27272a] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-                        <div className="flex justify-between items-center p-4 border-b border-[#27272a]">
-                            <h2 className="text-xl font-semibold">{title}</h2>
-                            <button onClick={onClose} className="text-zinc-400 hover:text-white"><i className="ph ph-x text-2xl"></i></button>
-                        </div>
-                        <div className="p-4 overflow-y-auto scroll-smooth flex-1">
-                            {children}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+      const [syncStatus, setSyncStatus] = useState('offline'); // 'synced' | 'syncing' | 'offline' | 'error'
+      const [lastSyncTime, setLastSyncTime] = useState(null);
+      const supabaseRef = useRef(null);
+      const isRemoteUpdateRef = useRef(false);
 
-        const App = () => {
-            const [data, setData] = useState(defaultState);
-            const [activeTab, setActiveTab] = useState('overview');
-            const [loaded, setLoaded] = useState(false);
-            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-            const fileInputRef = useRef(null);
+      // Ініціалізація Supabase клієнта та Realtime-слухача
+      useEffect(() => {
+        if (!supabaseConfig.url || !supabaseConfig.key) {
+          setSyncStatus('offline');
+          return;
+        }
 
-            useEffect(() => {
-                const saved = localStorage.getItem('life_os_ultimate');
-                if (saved) {
-                    try { 
-                        const parsed = JSON.parse(saved); 
-                        setData(prev => ({
-                            ...defaultState,
-                            ...parsed,
-                            goals: { ...defaultState.goals, ...(parsed.goals || {}) },
-                            notes: { ...defaultState.notes, ...(parsed.notes || {}) },
-                            links: { ...defaultState.links, ...(parsed.links || {}) },
-                            files: {
-                                work: { ...defaultState.files.work, ...(parsed.files?.work || {}) },
-                                gamedev: { folders: { ...defaultState.files.gamedev.folders, ...(parsed.files?.gamedev?.folders || {}) } }
-                            },
-                            sports: {
-                                plan: parsed.sports?.plan || "",
-                                workouts: parsed.sports?.workouts || [],
-                                weightHistory: parsed.sports?.weightHistory || []
-                            },
-                            finances: {
-                                transactions: parsed.finances?.transactions || []
-                            }
-                        }));
-                    } 
-                    catch(e) { console.error("Data parse error"); }
+        try {
+          const client = supabase.createClient(supabaseConfig.url, supabaseConfig.key);
+          supabaseRef.current = client;
+
+          // Первинне завантаження з хмари
+          const fetchInitialCloudData = async () => {
+            setSyncStatus('syncing');
+            const { data: cloudRow, error } = await client
+              .from('life_os_sync')
+              .select('*')
+              .eq('id', supabaseConfig.syncRoom)
+              .single();
+
+            if (cloudRow && cloudRow.payload) {
+              isRemoteUpdateRef.current = true;
+              setData(cloudRow.payload);
+              localStorage.setItem('life_os_data', JSON.stringify(cloudRow.payload));
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+            } else if (!error) {
+              // Якщо запису ще немає в базі — створюємо перший з поточними даними
+              await client.from('life_os_sync').upsert({
+                id: supabaseConfig.syncRoom,
+                payload: data,
+                updated_at: new Date().toISOString()
+              });
+              setSyncStatus('synced');
+            } else {
+              setSyncStatus('synced');
+            }
+          };
+
+          fetchInitialCloudData();
+
+          // Підписка на миттєві оновлення в реальному часі (Realtime Channel)
+          const channel = client
+            .channel(`sync-channel-${supabaseConfig.syncRoom}`)
+            .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'life_os_sync',
+                filter: `id=eq.${supabaseConfig.syncRoom}`
+              },
+              (payload) => {
+                if (payload.new && payload.new.payload) {
+                  // Перевірка часу, щоб не перезаписувати якщо дані вже нові
+                  const incomingPayload = payload.new.payload;
+                  isRemoteUpdateRef.current = true;
+                  setData(incomingPayload);
+                  localStorage.setItem('life_os_data', JSON.stringify(incomingPayload));
+                  setSyncStatus('synced');
+                  setLastSyncTime(new Date().toLocaleTimeString());
                 }
-                setLoaded(true);
-            }, []);
+              }
+            )
+            .subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                setSyncStatus('synced');
+              }
+            });
 
-            useEffect(() => {
-                if (loaded) {
-                    localStorage.setItem('life_os_ultimate', JSON.stringify(data));
-                }
-            }, [data, loaded]);
+          return () => {
+            client.removeChannel(channel);
+          };
+        } catch (err) {
+          console.error("Supabase Error:", err);
+          setSyncStatus('error');
+        }
+      }, [supabaseConfig.url, supabaseConfig.key, supabaseConfig.syncRoom]);
 
-            const updateData = (updater) => setData(prev => ({ ...prev, ...updater(prev) }));
+      // Автозбереження в хмару при локальних змінах (з debounce 600мс)
+      useEffect(() => {
+        localStorage.setItem('life_os_data', JSON.stringify(data));
 
-            const exportData = () => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", dataStr);
-                downloadAnchor.setAttribute("download", `life_os_backup_${new Date().toISOString().split('T')[0]}.json`);
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
-            };
+        if (isRemoteUpdateRef.current) {
+          isRemoteUpdateRef.current = false;
+          return;
+        }
 
-            const importData = (e) => {
-                const fileReader = new FileReader();
-                if (e.target.files[0]) {
-                    fileReader.readAsText(e.target.files[0], "UTF-8");
-                    fileReader.onload = (event) => {
-                        try {
-                            const parsedData = JSON.parse(event.target.result);
-                            setData(parsedData);
-                            alert("Дані успішно синхронізовано!");
-                        } catch (error) {
-                            alert("Файл пошкоджений або має невірний формат.");
-                        }
-                    };
-                }
-            };
+        if (!supabaseRef.current || !supabaseConfig.url || !supabaseConfig.key) return;
 
-            const handleTabChange = (tab) => {
-                setActiveTab(tab);
-                setIsMobileMenuOpen(false);
-            };
+        setSyncStatus('syncing');
+        const timeout = setTimeout(async () => {
+          try {
+            const payloadToSave = { ...data, lastUpdated: Date.now() };
+            const { error } = await supabaseRef.current
+              .from('life_os_sync')
+              .upsert({
+                id: supabaseConfig.syncRoom,
+                payload: payloadToSave,
+                updated_at: new Date().toISOString()
+              });
 
-            if (!loaded) return <div className="flex h-screen items-center justify-center text-white">Завантаження...</div>;
+            if (!error) {
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+            } else {
+              console.error(error);
+              setSyncStatus('error');
+            }
+          } catch (e) {
+            setSyncStatus('error');
+          }
+        }, 600);
 
-            return (
-                <div className="flex flex-col md:flex-row h-screen bg-[#09090b] text-zinc-300 relative overflow-hidden">
-                    
-                    {/* Мобільний верхній рядок */}
-                    <div className="md:hidden flex items-center justify-between p-4 bg-[#18181b] border-b border-[#27272a] z-30 flex-shrink-0">
-                        <div className="flex items-center gap-2 text-white font-bold text-lg">
-                            <i className="ph-fill ph-planet text-indigo-500"></i> Life OS
-                        </div>
-                        <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-300 hover:text-white bg-zinc-800 rounded-lg">
-                            <i className="ph ph-list text-2xl"></i>
-                        </button>
-                    </div>
+        return () => clearTimeout(timeout);
+      }, [data]);
 
-                    {/* Затемнення фону */}
-                    {isMobileMenuOpen && (
-                        <div className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
-                    )}
+      // Допоміжні функції оновлення стейту
+      const updateData = (updater) => {
+        setData(prev => ({
+          ...updater(prev),
+          lastUpdated: Date.now()
+        }));
+      };
 
-                    {/* Бокове меню */}
-                    <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-6 flex justify-between items-center">
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <i className="ph-fill ph-planet text-indigo-500"></i> Life OS
-                            </h1>
-                            <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-zinc-400 hover:text-white">
-                                <i className="ph ph-x text-2xl"></i>
-                            </button>
-                        </div>
-                        
-                        <nav className="flex-1 px-4 space-y-1 overflow-y-auto scroll-smooth">
-                            <NavBtn active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} icon="ph-squares-four" text="Огляд" />
-                            <NavBtn active={activeTab === 'calendar'} onClick={() => handleTabChange('calendar')} icon="ph-calendar-blank" text="Календар" />
-                            
-                            <div className="pt-4 pb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Сфери</div>
-                            {SPHERES.map(s => (
-                                <NavBtn key={s.id} active={activeTab === s.id} onClick={() => handleTabChange(s.id)} icon={s.icon} text={s.name} />
-                            ))}
-
-                            <div className="pt-4 pb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Лайфстайл</div>
-                            <NavBtn active={activeTab === 'sports'} onClick={() => handleTabChange('sports')} icon="ph-barbell" text="Спорт" />
-                            <NavBtn active={activeTab === 'finance'} onClick={() => handleTabChange('finance')} icon="ph-wallet" text="Фінанси" />
-                        </nav>
-
-                        {/* Синхронізація */}
-                        <div className="p-4 border-t border-[#27272a] space-y-2">
-                            <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація пристроїв</div>
-                            <button onClick={exportData} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-download-simple"></i> Експорт даних</button>
-                            <button onClick={() => fileInputRef.current.click()} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-upload-simple"></i> Імпорт даних</button>
-                            <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
-                        </div>
-                    </aside>
-
-                    {/* Основний вміст */}
-                    <main className="flex-1 overflow-y-auto scroll-smooth relative">
-                        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-                            {activeTab === 'overview' && <OverviewTab data={data} updateData={updateData} />}
-                            {activeTab === 'calendar' && <CalendarTab data={data} />}
-                            {SPHERES.map(s => activeTab === s.id && <SphereTab key={s.id} sphere={s.id} title={s.name} data={data} updateData={updateData} />)}
-                            {activeTab === 'sports' && <SportsTab data={data} updateData={updateData} />}
-                            {activeTab === 'finance' && <FinanceTab data={data} updateData={updateData} />}
-                        </div>
-                    </main>
-                </div>
-            );
-        };
-
-        const NavBtn = ({ active, onClick, icon, text }) => (
-            <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${active ? 'bg-indigo-600/10 text-indigo-400 font-medium' : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'}`}>
-                <i className={`ph ${icon} text-lg`}></i> {text}
-            </button>
-        );
-
-        const useTaskTimer = (task, onSave) => {
-            const [time, setTime] = useState(task.actualTime || 0);
-
-            useEffect(() => {
-                let interval;
-                if (task.timerActive) {
-                    interval = setInterval(() => {
-                        const now = Date.now();
-                        const elapsed = Math.floor((now - (task.lastStart || now)) / 1000);
-                        setTime((task.actualTime || 0) + elapsed);
-                    }, 1000);
-                } else {
-                    setTime(task.actualTime || 0);
-                }
-                return () => clearInterval(interval);
-            }, [task.timerActive, task.lastStart, task.actualTime]);
-
-            const formatTime = (secs) => {
-                const h = Math.floor(secs / 3600);
-                const m = Math.floor((secs % 3600) / 60);
-                const s = secs % 60;
-                return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-            };
-
-            const toggle = () => {
-                const now = Date.now();
-                if (task.timerActive) {
-                    const elapsed = Math.floor((now - task.lastStart) / 1000);
-                    onSave({ timerActive: false, actualTime: (task.actualTime || 0) + elapsed, lastStart: null });
-                } else {
-                    onSave({ timerActive: true, lastStart: now });
-                }
-            };
-
-            return { timeFormatted: formatTime(time), toggle, isRunning: task.timerActive };
-        };
-
-        const TaskCard = ({ task, onUpdate, onDelete }) => {
-            const { timeFormatted, toggle, isRunning } = useTaskTimer(task, (changes) => onUpdate(task.id, changes));
-
-            return (
-                <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2 hover:border-zinc-500 transition-colors">
-                    <div className="flex justify-between items-start gap-2">
-                        <span className="text-sm font-medium text-white">{task.title}</span>
-                        <button onClick={() => onDelete(task.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                    </div>
-                    
-                    <div className="text-xs text-zinc-400 flex items-center gap-2">
-                        <i className="ph ph-calendar"></i> {task.date}
-                        {task.estTime && <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">План: {task.estTime}</span>}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggle} className={`p-1.5 rounded-full ${isRunning ? 'bg-amber-500 text-black animate-pulse' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}>
-                                <i className={`ph-fill ${isRunning ? 'ph-pause' : 'ph-play'} text-xs`}></i>
-                            </button>
-                            <span className="font-mono text-xs text-zinc-300">{timeFormatted}</span>
-                        </div>
-                        <select 
-                            value={task.status} 
-                            onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-                            className="text-xs bg-[#27272a] py-1 px-2 rounded text-zinc-300 border-none cursor-pointer"
-                        >
-                            <option value="todo">Очікує</option>
-                            <option value="in_progress">В процесі</option>
-                            <option value="done">Виконано</option>
-                        </select>
-                    </div>
-                </div>
-            );
-        };
-
-        const OverviewTab = ({ data, updateData }) => {
-            const doneTasks = data.tasks.filter(t => t.status === 'done').length;
-            const totalTasks = data.tasks.length;
-            const progress = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
-            const balance = data.finances.transactions.reduce((acc, t) => t.type === 'income' ? acc + Number(t.amount) : acc - Number(t.amount), 0);
-
-            return (
-                <div className="space-y-8 animate-fade-in">
-                    <h2 className="text-3xl font-bold text-white">Головна панель</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatCard icon="ph-check-circle" color="text-emerald-400" title="Прогрес задач" value={`${progress}%`} sub={`${doneTasks} / ${totalTasks} виконано`} />
-                        <StatCard icon="ph-wallet" color="text-indigo-400" title="Капітал" value={`${balance.toLocaleString()} ₴`} sub="Поточний баланс" />
-                        <StatCard icon="ph-kanban" color="text-amber-400" title="В роботі" value={data.tasks.filter(t=>t.status==='in_progress').length} sub="Активних задач" />
-                        <StatCard icon="ph-barbell" color="text-rose-400" title="Тренування" value={data.sports.workouts.length} sub="Загальна кількість" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {['year', 'month', 'week'].map(period => (
-                            <div key={period} className="glass p-5 rounded-xl flex flex-col">
-                                <h3 className="text-lg font-semibold text-white mb-3 capitalize">Цілі на {period === 'year' ? 'Рік' : period === 'month' ? 'Місяць' : 'Тиждень'}</h3>
-                                <textarea 
-                                    className="w-full flex-1 min-h-[150px] resize-none bg-[#18181b]" 
-                                    placeholder="Напишіть цілі..."
-                                    value={data.goals[period]}
-                                    onChange={(e) => updateData(prev => ({ goals: { ...prev.goals, [period]: e.target.value } }))}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        const StatCard = ({ icon, color, title, value, sub }) => (
-            <div className="glass p-5 rounded-xl flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg bg-zinc-800/50 flex items-center justify-center flex-shrink-0 ${color}`}>
-                    <i className={`ph ${icon} text-2xl`}></i>
+      return (
+        <div className="flex flex-col md:flex-row min-h-screen">
+          {/* Sidebar / Mobile Nav */}
+          <aside className="w-full md:w-64 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between md:justify-start gap-3 mb-6">
+                <div className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2 rounded-xl text-white font-bold text-xl">
+                  ⚡
                 </div>
                 <div>
-                    <div className="text-sm text-zinc-400">{title}</div>
-                    <div className="text-2xl font-bold text-white">{value}</div>
-                    <div className="text-xs text-zinc-500">{sub}</div>
+                  <h1 className="font-bold text-lg leading-tight tracking-tight">Life OS Ultimate</h1>
+                  <p className="text-xs text-gray-400">Синхронізація ПК ⟷ Телефон</p>
                 </div>
+              </div>
+
+              {/* Статус синхронізації */}
+              <div className="mb-6 p-3 rounded-xl bg-gray-950 border border-gray-800 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  {syncStatus === 'synced' && <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                  {syncStatus === 'syncing' && <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-spin"></span>}
+                  {syncStatus === 'offline' && <span className="h-2.5 w-2.5 rounded-full bg-gray-500"></span>}
+                  {syncStatus === 'error' && <span className="h-2.5 w-2.5 rounded-full bg-rose-500"></span>}
+                  <span className="font-medium text-gray-300">
+                    {syncStatus === 'synced' && 'В мережі (Realtime)'}
+                    {syncStatus === 'syncing' && 'Синхронізація...'}
+                    {syncStatus === 'offline' && 'Локальний режим'}
+                    {syncStatus === 'error' && 'Помилка хмари'}
+                  </span>
+                </div>
+                {lastSyncTime && <span className="text-gray-500">{lastSyncTime}</span>}
+              </div>
+
+              {/* Меню вкладок */}
+              <nav className="flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 custom-scrollbar">
+                {[
+                  { id: 'tasks', label: '📋 Завдання', desc: 'Справи та таймери' },
+                  { id: 'gamedev', label: '🎮 GameDev', desc: 'Асети та файли' },
+                  { id: 'workshop', label: '🚜 Майстерня', desc: 'Техніка та ТО' },
+                  { id: 'crypto', label: '📈 Крипто & Бот', desc: 'EMA та моніторинг' },
+                  { id: 'finance', label: '💰 Фінанси', desc: 'Витрати та доходи' },
+                  { id: 'settings', label: '⚙️ Синхронізація', desc: 'Хмарні налаштування' }
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex-shrink-0 md:w-full text-left px-3.5 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                      activeTab === item.id
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                    }`}
+                  >
+                    <div>{item.label}</div>
+                  </button>
+                ))}
+              </nav>
             </div>
-        );
 
-        const CalendarTab = ({ data }) => {
-            const [currentDate, setCurrentDate] = useState(new Date());
-            const [selectedDateStr, setSelectedDateStr] = useState(null);
+            <div className="hidden md:block pt-4 border-t border-gray-800 text-xs text-gray-500">
+              Дані миттєво передаються між пристроями по WebSocket
+            </div>
+          </aside>
 
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+          {/* Main Content Area */}
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-6xl mx-auto w-full">
+            {activeTab === 'tasks' && <TasksView data={data} updateData={updateData} />}
+            {activeTab === 'gamedev' && <GameDevView data={data} updateData={updateData} />}
+            {activeTab === 'workshop' && <WorkshopView data={data} updateData={updateData} />}
+            {activeTab === 'crypto' && <CryptoView data={data} updateData={updateData} />}
+            {activeTab === 'finance' && <FinanceView data={data} updateData={updateData} />}
+            {activeTab === 'settings' && (
+              <SettingsView
+                config={supabaseConfig}
+                setConfig={(cfg) => {
+                  setSupabaseConfig(cfg);
+                  localStorage.setItem('life_os_supabase_config', JSON.stringify(cfg));
+                }}
+                data={data}
+                setData={setData}
+                syncStatus={syncStatus}
+              />
+            )}
+          </main>
+        </div>
+      );
+    }
 
-            const days = [];
-            for (let i = 0; i < startDay; i++) days.push(null);
-            for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    // -------------------------------------------------------------
+    // МОДУЛЬ 1: Завдання та трекінг
+    // -------------------------------------------------------------
+    function TasksView({ data, updateData }) {
+      const [title, setTitle] = useState('');
+      const [category, setCategory] = useState('General');
 
-            const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
-
-            const handlePrev = () => setCurrentDate(new Date(year, month - 1, 1));
-            const handleNext = () => setCurrentDate(new Date(year, month + 1, 1));
-            const handleToday = () => setCurrentDate(new Date());
-
-            const getItemsForDate = (d) => {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const t = data.tasks.filter(x => x.date === dateStr);
-                const e = data.events.filter(x => x.date === dateStr);
-                return { dateStr, tasks: t, events: e };
-            };
-
-            const selectedItems = selectedDateStr ? {
-                tasks: data.tasks.filter(t => t.date === selectedDateStr),
-                events: data.events.filter(e => e.date === selectedDateStr)
-            } : null;
-
-            return (
-                <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <h2 className="text-3xl font-bold text-white">Календар</h2>
-                        <div className="flex items-center gap-2 bg-[#18181b] p-2 rounded-lg border border-[#27272a]">
-                            <button onClick={handlePrev} className="p-2 hover:bg-zinc-800 rounded"><i className="ph ph-caret-left"></i></button>
-                            <span className="font-semibold text-white w-32 text-center text-sm">{monthNames[month]} {year}</span>
-                            <button onClick={handleNext} className="p-2 hover:bg-zinc-800 rounded"><i className="ph ph-caret-right"></i></button>
-                            <button onClick={handleToday} className="btn btn-ghost text-xs ml-2">Сьогодні</button>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-                        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map(d => <div key={d} className="text-center font-semibold text-zinc-500 py-2 text-xs md:text-sm">{d}</div>)}
-                    </div>
-                    
-                    <div className="grid grid-cols-7 gap-1 md:gap-2">
-                        {days.map((d, i) => {
-                            if (!d) return <div key={i} className="h-20 md:h-24 bg-[#09090b] rounded-lg"></div>;
-                            const { dateStr, tasks, events } = getItemsForDate(d);
-                            const isToday = dateStr === new Date().toISOString().split('T')[0];
-                            
-                            return (
-                                <div key={i} onClick={() => setSelectedDateStr(dateStr)} className={`h-20 md:h-24 p-1 md:p-2 rounded-lg border cursor-pointer transition-all overflow-hidden relative flex flex-col ${isToday ? 'bg-indigo-900/20 border-indigo-500' : 'bg-[#18181b] border-[#27272a] hover:border-zinc-500'}`}>
-                                    <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-indigo-400' : 'text-zinc-400'}`}>{d}</span>
-                                    <div className="flex-1 mt-1 flex flex-col gap-1 overflow-hidden">
-                                        {events.slice(0,1).map(e => <div key={e.id} className="text-[9px] md:text-[10px] bg-amber-500/20 text-amber-300 px-1 rounded truncate flex-shrink-0">{e.title}</div>)}
-                                        {tasks.slice(0,1).map(t => <div key={t.id} className="text-[9px] md:text-[10px] bg-indigo-500/20 text-indigo-300 px-1 rounded truncate flex-shrink-0">{t.title}</div>)}
-                                        {(events.length + tasks.length) > 2 && <div className="text-[9px] text-zinc-500 pl-1">+{events.length + tasks.length - 2} ще</div>}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <Modal isOpen={!!selectedDateStr} onClose={() => setSelectedDateStr(null)} title={`Події на ${selectedDateStr}`}>
-                        {selectedItems && (
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="font-bold text-amber-400 mb-2 flex items-center gap-2"><i className="ph-fill ph-star"></i> Важливі події</h3>
-                                    {selectedItems.events.length === 0 ? <p className="text-zinc-500 text-sm">Немає подій</p> : (
-                                        <div className="space-y-2">
-                                            {selectedItems.events.map(e => <div key={e.id} className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-100">{e.title}</div>)}
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-indigo-400 mb-2 flex items-center gap-2"><i className="ph-fill ph-check-square"></i> Задачі</h3>
-                                    {selectedItems.tasks.length === 0 ? <p className="text-zinc-500 text-sm">Немає задач</p> : (
-                                        <div className="space-y-2">
-                                            {selectedItems.tasks.map(t => <div key={t.id} className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-100 flex justify-between"><span>{t.title}</span><span className="text-xs text-indigo-300 opacity-70">{t.sphere}</span></div>)}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </Modal>
-                </div>
-            );
+      const addTask = (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+        const newTask = {
+          id: Date.now().toString(),
+          title: title.trim(),
+          category,
+          completed: false,
+          timeSpent: 0
         };
+        updateData(prev => ({ ...prev, tasks: [newTask, ...prev.tasks] }));
+        setTitle('');
+      };
 
-        const SphereNotesLinks = ({ sphere, data, updateData }) => {
-            const [newLinkUrl, setNewLinkUrl] = useState("");
-            const [newLinkTitle, setNewLinkTitle] = useState("");
+      const toggleTask = (id) => {
+        updateData(prev => ({
+          ...prev,
+          tasks: prev.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
+        }));
+      };
 
-            const notes = data.notes?.[sphere] || "";
-            const links = data.links?.[sphere] || [];
+      const deleteTask = (id) => {
+        updateData(prev => ({
+          ...prev,
+          tasks: prev.tasks.filter(t => t.id !== id)
+        }));
+      };
 
-            const handleNoteChange = (e) => {
-                updateData(prev => ({ notes: { ...prev.notes, [sphere]: e.target.value } }));
-            };
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">📋 Менеджер завдань</h2>
+              <p className="text-sm text-gray-400">Усі зміни миттєво видно на телефоні та комп'ютері</p>
+            </div>
+          </div>
 
-            const addLink = (e) => {
-                e.preventDefault();
-                if (!newLinkUrl) return;
-                const newLink = { id: Date.now().toString(), url: newLinkUrl, title: newLinkTitle || newLinkUrl };
-                updateData(prev => ({ links: { ...prev.links, [sphere]: [...(prev.links[sphere]||[]), newLink] } }));
-                setNewLinkUrl("");
-                setNewLinkTitle("");
-            };
+          <form onSubmit={addTask} className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Нове завдання..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value="General">Загальне</option>
+              <option value="Crypto">Крипто / Бот</option>
+              <option value="Workshop">Майстерня / Техніка</option>
+              <option value="GameDev">GameDev</option>
+            </select>
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-all"
+            >
+              + Додати
+            </button>
+          </form>
 
-            const deleteLink = (id) => {
-                updateData(prev => ({ links: { ...prev.links, [sphere]: prev.links[sphere].filter(l => l.id !== id) } }));
-            };
-
-            return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    <div className="glass p-5 rounded-xl flex flex-col h-[300px]">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><i className="ph ph-note"></i> Нотатки</h3>
-                        <textarea 
-                            className="flex-1 resize-none bg-[#18181b]" 
-                            placeholder="Ваші нотатки для цієї сфери..." 
-                            value={notes} 
-                            onChange={handleNoteChange} 
-                        />
-                    </div>
-                    <div className="glass p-5 rounded-xl flex flex-col h-[300px]">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><i className="ph ph-link"></i> Посилання</h3>
-                        <form onSubmit={addLink} className="flex gap-2 mb-4">
-                            <input className="flex-1 text-sm bg-[#18181b]" placeholder="Назва" value={newLinkTitle} onChange={e=>setNewLinkTitle(e.target.value)} />
-                            <input className="flex-1 text-sm bg-[#18181b]" placeholder="URL" required value={newLinkUrl} onChange={e=>setNewLinkUrl(e.target.value)} />
-                            <button type="submit" className="btn btn-primary px-3"><i className="ph ph-plus"></i></button>
-                        </form>
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                            {links.length === 0 && <p className="text-zinc-500 text-sm text-center py-4">Немає збережених посилань</p>}
-                            {links.map(l => (
-                                <div key={l.id} className="flex justify-between items-center p-2 bg-[#18181b] rounded border border-[#27272a]">
-                                    <a href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" className="text-indigo-400 hover:underline truncate mr-2 flex-1 text-sm">
-                                        {l.title}
-                                    </a>
-                                    <button onClick={() => deleteLink(l.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+          <div className="grid gap-2">
+            {data.tasks.map(task => (
+              <div
+                key={task.id}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                  task.completed ? 'bg-gray-900/40 border-gray-900 opacity-60' : 'bg-gray-900 border-gray-800'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => toggleTask(task.id)}
+                    className="h-5 w-5 rounded border-gray-700 bg-gray-950 text-blue-600 cursor-pointer"
+                  />
+                  <div className="truncate">
+                    <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-200'}`}>
+                      {task.title}
+                    </span>
+                    <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400">
+                      {task.category}
+                    </span>
+                  </div>
                 </div>
-            );
+                <button
+                  onClick={() => deleteTask(task.id)}
+                  className="text-gray-500 hover:text-rose-400 p-1.5 rounded text-sm transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // МОДУЛЬ 2: GameDev Asset Manager
+    // -------------------------------------------------------------
+    function GameDevView({ data, updateData }) {
+      const [name, setName] = useState('');
+      const [folder, setFolder] = useState('3D Models');
+
+      const addAsset = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        const newAsset = {
+          id: Date.now().toString(),
+          name: name.trim(),
+          folder,
+          date: new Date().toISOString().split('T')[0],
+          status: 'В роботі'
         };
+        updateData(prev => ({ ...prev, assets: [newAsset, ...prev.assets] }));
+        setName('');
+      };
 
-        const WorkFileManager = ({ data, updateData }) => {
-            const [activeCat, setActiveCat] = useState(WORK_DOC_CATS[0]);
-            const [newDocText, setNewDocText] = useState("");
+      const deleteAsset = (id) => {
+        updateData(prev => ({ ...prev, assets: prev.assets.filter(a => a.id !== id) }));
+      };
 
-            const docs = data.files.work?.[activeCat] || [];
+      return (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">🎮 GameDev Репозиторій & Асети</h2>
 
-            const addDoc = (e) => {
-                e.preventDefault();
-                if (!newDocText.trim()) return;
-                const newDoc = { id: Date.now().toString(), text: newDocText, date: new Date().toISOString().split('T')[0] };
-                updateData(prev => ({
-                    files: {
-                        ...prev.files,
-                        work: {
-                            ...prev.files.work,
-                            [activeCat]: [...(prev.files.work?.[activeCat] || []), newDoc]
-                        }
-                    }
-                }));
-                setNewDocText("");
-            };
+          <form onSubmit={addAsset} className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Назва асету / спрайту / моделі..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            />
+            <select
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+              className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value="3D Models">3D Models</option>
+              <option value="Textures">Textures</option>
+              <option value="Audio">Audio / SFX</option>
+              <option value="Scripts">Scripts / Logic</option>
+            </select>
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+              + Додати асет
+            </button>
+          </form>
 
-            const deleteDoc = (id) => {
-                updateData(prev => ({
-                    files: {
-                        ...prev.files,
-                        work: {
-                            ...prev.files.work,
-                            [activeCat]: (prev.files.work?.[activeCat] || []).filter(d => d.id !== id)
-                        }
-                    }
-                }));
-            };
+          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-950/80 text-gray-400 border-b border-gray-800">
+                <tr>
+                  <th className="p-3.5">Назва файлу</th>
+                  <th className="p-3.5">Категорія</th>
+                  <th className="p-3.5">Дата</th>
+                  <th className="p-3.5 text-right">Дії</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {data.assets.map(asset => (
+                  <tr key={asset.id} className="hover:bg-gray-800/50">
+                    <td className="p-3.5 font-medium text-gray-200">{asset.name}</td>
+                    <td className="p-3.5"><span className="px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-800/40 text-xs">{asset.folder}</span></td>
+                    <td className="p-3.5 text-gray-400 text-xs">{asset.date}</td>
+                    <td className="p-3.5 text-right">
+                      <button onClick={() => deleteAsset(asset.id)} className="text-gray-500 hover:text-rose-400 text-xs">Видалити</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
 
-            return (
-                <div className="glass p-5 rounded-xl space-y-4 mt-8">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <i className="ph ph-folder-open text-indigo-400"></i> Документи та звіти по роботі
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {WORK_DOC_CATS.map(cat => (
-                            <button 
-                                key={cat} 
-                                onClick={() => setActiveCat(cat)} 
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${activeCat === cat ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
-                            >
-                                {cat} ({(data.files.work?.[cat] || []).length})
-                            </button>
-                        ))}
-                    </div>
-                    <form onSubmit={addDoc} className="flex gap-2">
-                        <input className="flex-1 text-sm bg-[#18181b]" placeholder={`Додати запис/посилання для "${activeCat}"...`} value={newDocText} onChange={e => setNewDocText(e.target.value)} />
-                        <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i> Додати</button>
-                    </form>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {docs.length === 0 ? <p className="text-zinc-500 text-xs py-2">Записів у цій категорії ще немає</p> : (
-                            docs.map(doc => (
-                                <div key={doc.id} className="flex justify-between items-center p-2.5 bg-[#18181b] rounded border border-[#27272a] text-sm">
-                                    <span className="text-zinc-200">{doc.text}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] text-zinc-500">{doc.date}</span>
-                                        <button onClick={() => deleteDoc(doc.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+    // -------------------------------------------------------------
+    // МОДУЛЬ 3: Майстерня та Обслуговування
+    // -------------------------------------------------------------
+    function WorkshopView({ data, updateData }) {
+      const [unit, setUnit] = useState('Трактор Т-40');
+      const [task, setTask] = useState('');
+
+      const addRecord = (e) => {
+        e.preventDefault();
+        if (!task.trim()) return;
+        const newRecord = {
+          id: Date.now().toString(),
+          unit,
+          task: task.trim(),
+          date: new Date().toISOString().split('T')[0],
+          status: 'Заплановано'
+        };
+        updateData(prev => ({ ...prev, maintenance: [newRecord, ...prev.maintenance] }));
+        setTask('');
+      };
+
+      const toggleStatus = (id) => {
+        updateData(prev => ({
+          ...prev,
+          maintenance: prev.maintenance.map(m => m.id === id ? {
+            ...m,
+            status: m.status === 'Виконано' ? 'Заплановано' : 'Виконано'
+          } : m)
+        }));
+      };
+
+      return (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">🚜 Обслуговування Техніки & Майстерня</h2>
+          
+          <form onSubmit={addRecord} className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col sm:flex-row gap-3">
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm"
+            >
+              <option value="Трактор Т-40">Трактор Т-40</option>
+              <option value="Електропідмітач">Електропідмітач</option>
+              <option value="Навісне обладнання">Навісне обладнання</option>
+              <option value="Інструменти">Інструменти</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Що потрібно зробити (напр. заміна мастила)..."
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm"
+            />
+            <button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+              + Додати ТО
+            </button>
+          </form>
+
+          <div className="grid gap-3">
+            {data.maintenance.map(item => (
+              <div key={item.id} className="p-4 rounded-xl bg-gray-900 border border-gray-800 flex justify-between items-center">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-200 text-sm">{item.unit}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${item.status === 'Виконано' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : 'bg-amber-950 text-amber-400 border border-amber-800/40'}`}>
+                      {item.status}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-1">{item.task}</p>
                 </div>
-            );
+                <button
+                  onClick={() => toggleStatus(item.id)}
+                  className="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-950 hover:bg-gray-800 text-xs font-medium"
+                >
+                  {item.status === 'Виконано' ? 'Відновити' : 'Відмітити як зроблене'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // МОДУЛЬ 4: Крипто & Бот Монітор
+    // -------------------------------------------------------------
+    function CryptoView({ data, updateData }) {
+      const notes = data.cryptoNotes || {};
+
+      const handleUpdate = (field, val) => {
+        updateData(prev => ({
+          ...prev,
+          cryptoNotes: {
+            ...prev.cryptoNotes,
+            [field]: val
+          }
+        }));
+      };
+
+      return (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">📈 Крипто Бот & Макро-тренд (EMA)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 bg-gray-900 border border-gray-800 rounded-xl space-y-3">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Статус роботи бота</label>
+              <input
+                type="text"
+                value={notes.botStatus || ''}
+                onChange={(e) => handleUpdate('botStatus', e.target.value)}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500"
+              />
+            </div>
+            <div className="p-5 bg-gray-900 border border-gray-800 rounded-xl space-y-3">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ризик-менеджмент на сесію</label>
+              <input
+                type="text"
+                value={notes.riskLimit || ''}
+                onChange={(e) => handleUpdate('riskLimit', e.target.value)}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500"
+              />
+            </div>
+            <div className="p-5 bg-gray-900 border border-gray-800 rounded-xl space-y-3 md:col-span-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Аналіз тренду (EMA 50 / 200 & Нотатки)</label>
+              <textarea
+                rows="4"
+                value={notes.macroEma || ''}
+                onChange={(e) => handleUpdate('macroEma', e.target.value)}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // МОДУЛЬ 5: Фінанси
+    // -------------------------------------------------------------
+    function FinanceView({ data, updateData }) {
+      const [title, setTitle] = useState('');
+      const [amount, setAmount] = useState('');
+      const [category, setCategory] = useState('Витрати');
+
+      const addTx = (e) => {
+        e.preventDefault();
+        const num = parseFloat(amount);
+        if (!title.trim() || isNaN(num)) return;
+
+        const newTx = {
+          id: Date.now().toString(),
+          title: title.trim(),
+          amount: category === 'Витрати' ? -Math.abs(num) : Math.abs(num),
+          category,
+          date: new Date().toISOString().split('T')[0]
         };
+        updateData(prev => ({ ...prev, finances: [newTx, ...prev.finances] }));
+        setTitle('');
+        setAmount('');
+      };
 
-        const GameDevAssetManager = ({ data, updateData }) => {
-            const [folderName, setFolderName] = useState("");
-            const [selectedFolder, setSelectedFolder] = useState("Головна");
-            const [assetName, setAssetName] = useState("");
+      const balance = data.finances.reduce((acc, cur) => acc + cur.amount, 0);
 
-            const folders = Object.keys(data.files.gamedev?.folders || { "Головна": [] });
-            const assets = data.files.gamedev?.folders?.[selectedFolder] || [];
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">💰 Фінансовий облік</h2>
+            <div className="text-right">
+              <span className="text-xs text-gray-400 block">Загальний баланс</span>
+              <span className={`text-xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {balance > 0 ? `+${balance}` : balance} ₴
+              </span>
+            </div>
+          </div>
 
-            const addFolder = (e) => {
-                e.preventDefault();
-                if (!folderName.trim() || data.files.gamedev?.folders?.[folderName]) return;
-                updateData(prev => ({
-                    files: {
-                        ...prev.files,
-                        gamedev: {
-                            folders: {
-                                ...(prev.files.gamedev?.folders || {}),
-                                [folderName]: []
-                            }
-                        }
-                    }
-                }));
-                setSelectedFolder(folderName);
-                setFolderName("");
-            };
+          <form onSubmit={addTx} className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Опис транзакції..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 text-sm"
+            />
+            <input
+              type="number"
+              placeholder="Сума"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full sm:w-32 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 text-sm"
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 text-sm"
+            >
+              <option value="Витрати">Витрата (-)</option>
+              <option value="Дохід">Дохід (+)</option>
+            </select>
+            <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg text-sm font-medium">
+              + Додати
+            </button>
+          </form>
 
-            const addAsset = (e) => {
-                e.preventDefault();
-                if (!assetName.trim()) return;
-                const newAsset = { id: Date.now().toString(), name: assetName, date: new Date().toISOString().split('T')[0] };
-                updateData(prev => ({
-                    files: {
-                        ...prev.files,
-                        gamedev: {
-                            folders: {
-                                ...(prev.files.gamedev?.folders || {}),
-                                [selectedFolder]: [...(prev.files.gamedev?.folders?.[selectedFolder] || []), newAsset]
-                            }
-                        }
-                    }
-                }));
-                setAssetName("");
-            };
-
-            const deleteAsset = (id) => {
-                updateData(prev => ({
-                    files: {
-                        ...prev.files,
-                        gamedev: {
-                            folders: {
-                                ...(prev.files.gamedev?.folders || {}),
-                                [selectedFolder]: (prev.files.gamedev?.folders?.[selectedFolder] || []).filter(a => a.id !== id)
-                            }
-                        }
-                    }
-                }));
-            };
-
-            return (
-                <div className="glass p-5 rounded-xl space-y-4 mt-8">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <i className="ph ph-cube text-indigo-400"></i> GameDev Папки та Асети
-                    </h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="w-full sm:w-1/3 space-y-3">
-                            <form onSubmit={addFolder} className="flex gap-2">
-                                <input className="flex-1 text-xs bg-[#18181b]" placeholder="Нова папка..." value={folderName} onChange={e=>setFolderName(e.target.value)} />
-                                <button type="submit" className="btn btn-ghost text-xs px-2"><i className="ph ph-plus"></i></button>
-                            </form>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                                {folders.map(f => (
-                                    <button 
-                                        key={f} 
-                                        onClick={() => setSelectedFolder(f)}
-                                        className={`w-full text-left px-3 py-2 rounded text-xs flex justify-between items-center ${selectedFolder === f ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'bg-[#18181b] text-zinc-400 hover:text-white'}`}
-                                    >
-                                        <span className="flex items-center gap-2"><i className="ph ph-folder"></i> {f}</span>
-                                        <span className="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded">{(data.files.gamedev?.folders?.[f] || []).length}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="w-full sm:w-2/3 space-y-3">
-                            <form onSubmit={addAsset} className="flex gap-2">
-                                <input className="flex-1 text-xs bg-[#18181b]" placeholder={`Додати асет у "${selectedFolder}"...`} value={assetName} onChange={e=>setAssetName(e.target.value)} />
-                                <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i></button>
-                            </form>
-                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                                {assets.length === 0 ? <p className="text-zinc-500 text-xs py-2">Папка порожня</p> : (
-                                    assets.map(asset => (
-                                        <div key={asset.id} className="flex justify-between items-center p-2 bg-[#18181b] rounded border border-[#27272a] text-xs">
-                                            <span className="text-zinc-200">{asset.name}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-zinc-500">{asset.date}</span>
-                                                <button onClick={() => deleteAsset(asset.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
+          <div className="space-y-2">
+            {data.finances.map(tx => (
+              <div key={tx.id} className="p-3.5 bg-gray-900 border border-gray-800 rounded-xl flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-sm text-gray-200 block">{tx.title}</span>
+                  <span className="text-xs text-gray-500">{tx.date}</span>
                 </div>
-            );
+                <span className={`font-semibold text-sm ${tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {tx.amount > 0 ? `+${tx.amount}` : tx.amount} ₴
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // МОДУЛЬ 6: Налаштування та Керування Синхронізацією
+    // -------------------------------------------------------------
+    function SettingsView({ config, setConfig, data, setData, syncStatus }) {
+      const [form, setForm] = useState(config);
+      const [msg, setMsg] = useState('');
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        setConfig(form);
+        setMsg('✅ Налаштування збережено! Перевірте статус з’єднання.');
+        setTimeout(() => setMsg(''), 4000);
+      };
+
+      const exportBackup = () => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `life_os_backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+      };
+
+      const importBackup = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const parsed = JSON.parse(evt.target.result);
+            setData(parsed);
+            alert('Дані успішно імпортовано!');
+          } catch (err) {
+            alert('Помилка читання JSON файлу!');
+          }
         };
+        reader.readAsText(file);
+      };
 
-        const SphereTab = ({ sphere, title, data, updateData }) => {
-            const tasks = data.tasks.filter(t => t.sphere === sphere);
-            const statuses = [
-                { id: 'todo', title: 'Очікує', color: 'border-zinc-700' },
-                { id: 'in_progress', title: 'В процесі', color: 'border-blue-700' },
-                { id: 'done', title: 'Виконано', color: 'border-emerald-700' }
-            ];
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-2xl font-bold">⚙️ Налаштування хмарної синхронізації</h2>
+            <p className="text-sm text-gray-400">Введіть однакові дані на комп’ютері та телефоні для безперервного зв'язку</p>
+          </div>
 
-            const addTask = (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const newTask = {
-                    id: Date.now().toString(), sphere, status: 'todo',
-                    title: fd.get('title'), date: fd.get('date'),
-                    estTime: fd.get('estTime'), 
-                    actualTime: 0, timerActive: false, lastStart: null
-                };
-                updateData(prev => ({ tasks: [...prev.tasks, newTask] }));
-                e.target.reset();
-            };
+          <form onSubmit={handleSave} className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Supabase Project URL</label>
+              <input
+                type="text"
+                placeholder="https://xyzcompany.supabase.co"
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value.trim() })}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 font-mono"
+              />
+            </div>
 
-            const updateTask = (id, changes) => {
-                updateData(prev => ({ tasks: prev.tasks.map(t => t.id === id ? { ...t, ...changes } : t) }));
-            };
-            const deleteTask = (id) => updateData(prev => ({ tasks: prev.tasks.filter(t => t.id !== id) }));
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Supabase Anon Key (Public Key)</label>
+              <input
+                type="password"
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                value={form.key}
+                onChange={(e) => setForm({ ...form, key: e.target.value.trim() })}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 font-mono"
+              />
+            </div>
 
-            return (
-                <div className="space-y-6">
-                    <h2 className="text-3xl font-bold text-white mb-6">{title}</h2>
-                    
-                    <form onSubmit={addTask} className="glass p-4 rounded-xl flex gap-3 flex-wrap items-end">
-                        <div className="flex-1 min-w-[200px] flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400">Назва задачі</label>
-                            <input name="title" required placeholder="Що потрібно зробити?" />
-                        </div>
-                        <div className="w-full sm:w-36 flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400">Дата</label>
-                            <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} />
-                        </div>
-                        <div className="w-full sm:w-36 flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400">Оцінка часу</label>
-                            <input name="estTime" placeholder="напр. 2h 30m" />
-                        </div>
-                        <button type="submit" className="btn btn-primary w-full sm:w-auto"><i className="ph ph-plus-circle"></i> Додати</button>
-                    </form>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">ID Кімнати / Sync Key (має бути однаковим на обох девайсах)</label>
+              <input
+                type="text"
+                placeholder="my_private_room"
+                value={form.syncRoom}
+                onChange={(e) => setForm({ ...form, syncRoom: e.target.value.trim() })}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm focus:border-blue-500 font-mono"
+              />
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {statuses.map(col => (
-                            <div key={col.id} className="glass rounded-xl flex flex-col max-h-[600px]">
-                                <div className={`p-3 font-semibold border-b-2 ${col.color} bg-[#18181b] rounded-t-xl sticky top-0 flex justify-between`}>
-                                    {col.title} <span className="bg-zinc-800 px-2 py-0.5 rounded-full text-xs">{tasks.filter(t=>t.status===col.id).length}</span>
-                                </div>
-                                <div className="p-3 space-y-3 overflow-y-auto scroll-smooth flex-1">
-                                    {tasks.filter(t => t.status === col.id).map(task => (
-                                        <TaskCard key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
-                                    ))}
-                                    {tasks.filter(t => t.status === col.id).length === 0 && (
-                                        <div className="text-center py-6 text-xs text-zinc-600">Немає задач</div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+            {msg && <p className="text-sm text-emerald-400">{msg}</p>}
 
-                    {sphere === 'work' && <WorkFileManager data={data} updateData={updateData} />}
-                    {sphere === 'gamedev' && <GameDevAssetManager data={data} updateData={updateData} />}
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-lg text-sm"
+            >
+              Зберегти та підключити
+            </button>
+          </form>
 
-                    <SphereNotesLinks sphere={sphere} data={data} updateData={updateData} />
-                </div>
-            );
-        };
+          {/* Резервне копіювання */}
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
+            <h3 className="font-semibold text-gray-200">💾 Локальний бекап (Офлайн)</h3>
+            <div className="flex flex-wrap gap-4">
+              <button
+                onClick={exportBackup}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-medium"
+              >
+                📥 Завантажити JSON бекап
+              </button>
+              <label className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-medium cursor-pointer">
+                📤 Відновити з файлу
+                <input type="file" accept=".json" onChange={importBackup} className="hidden" />
+              </label>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-        const SportsTab = ({ data, updateData }) => {
-            const [workoutTitle, setWorkoutTitle] = useState("");
-            const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0]);
-            const [workoutDuration, setWorkoutDuration] = useState("");
-            const [weightValue, setWeightValue] = useState("");
-            const [weightDate, setWeightDate] = useState(new Date().toISOString().split('T')[0]);
-
-            const addWorkout = (e) => {
-                e.preventDefault();
-                if (!workoutTitle.trim()) return;
-                const newW = {
-                    id: Date.now().toString(),
-                    title: workoutTitle,
-                    date: workoutDate,
-                    duration: workoutDuration || "45 хв"
-                };
-                updateData(prev => ({ sports: { ...prev.sports, workouts: [newW, ...(prev.sports.workouts || [])] } }));
-                setWorkoutTitle("");
-                setWorkoutDuration("");
-            };
-
-            const addWeight = (e) => {
-                e.preventDefault();
-                if (!weightValue) return;
-                const newEntry = { id: Date.now().toString(), date: weightDate, weight: parseFloat(weightValue) };
-                updateData(prev => ({ sports: { ...prev.sports, weightHistory: [newEntry, ...(prev.sports.weightHistory || [])] } }));
-                setWeightValue("");
-            };
-
-            const deleteWorkout = (id) => updateData(prev => ({ sports: { ...prev.sports, workouts: prev.sports.workouts.filter(w => w.id !== id) } }));
-            const deleteWeight = (id) => updateData(prev => ({ sports: { ...prev.sports, weightHistory: prev.sports.weightHistory.filter(w => w.id !== id) } }));
-
-            return (
-                <div className="space-y-8 animate-fade-in">
-                    <h2 className="text-3xl font-bold text-white">Спорт & Здоров'я</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* План тренувань */}
-                        <div className="glass p-5 rounded-xl flex flex-col h-[280px]">
-                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><i className="ph ph-clipboard-text text-rose-400"></i> План тренувань</h3>
-                            <textarea 
-                                className="flex-1 resize-none bg-[#18181b]" 
-                                placeholder="Опишіть ваш графік тренувань (наприклад: Пн/Ср/Пт - Силове, Вт/Чт - Кардіо)..."
-                                value={data.sports.plan || ""}
-                                onChange={(e) => updateData(prev => ({ sports: { ...prev.sports, plan: e.target.value } }))}
-                            />
-                        </div>
-
-                        {/* Контроль ваги */}
-                        <div className="glass p-5 rounded-xl flex flex-col h-[280px]">
-                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><i className="ph ph-scales text-rose-400"></i> Контроль ваги</h3>
-                            <form onSubmit={addWeight} className="flex gap-2 mb-3">
-                                <input type="number" step="0.1" placeholder="Вага (кг)" required className="w-28 text-sm" value={weightValue} onChange={e=>setWeightValue(e.target.value)} />
-                                <input type="date" required className="text-sm flex-1" value={weightDate} onChange={e=>setWeightDate(e.target.value)} />
-                                <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i></button>
-                            </form>
-                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-                                {(data.sports.weightHistory || []).map(w => (
-                                    <div key={w.id} className="flex justify-between items-center p-2 bg-[#18181b] rounded text-sm border border-[#27272a]">
-                                        <span className="font-bold text-white">{w.weight} кг</span>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500">{w.date}</span>
-                                            <button onClick={() => deleteWeight(w.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Журнал тренувань */}
-                    <div className="glass p-5 rounded-xl space-y-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2"><i className="ph ph-activity text-rose-400"></i> Журнал тренувань</h3>
-                        <form onSubmit={addWorkout} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                            <input className="sm:col-span-2 text-sm" placeholder="Назва тренування (Груди/Трицепс, Біг...)" required value={workoutTitle} onChange={e=>setWorkoutTitle(e.target.value)} />
-                            <input type="date" className="text-sm" required value={workoutDate} onChange={e=>setWorkoutDate(e.target.value)} />
-                            <input className="text-sm" placeholder="Тривалість" value={workoutDuration} onChange={e=>setWorkoutDuration(e.target.value)} />
-                            <button type="submit" className="btn btn-primary sm:col-span-4"><i className="ph ph-plus-circle"></i> Записати тренування</button>
-                        </form>
-                        <div className="space-y-2 mt-4 max-h-72 overflow-y-auto pr-1">
-                            {(data.sports.workouts || []).map(w => (
-                                <div key={w.id} className="flex justify-between items-center p-3 bg-[#18181b] rounded-lg border border-[#27272a]">
-                                    <div>
-                                        <div className="font-semibold text-white text-sm">{w.title}</div>
-                                        <div className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
-                                            <span><i className="ph ph-calendar"></i> {w.date}</span>
-                                            <span>•</span>
-                                            <span><i className="ph ph-clock"></i> {w.duration}</span>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => deleteWorkout(w.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const FinanceTab = ({ data, updateData }) => {
-            const [type, setType] = useState('expense');
-            const [amount, setAmount] = useState('');
-            const [category, setCategory] = useState(EXPENSE_CATS[0]);
-            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-            const [comment, setComment] = useState('');
-
-            useEffect(() => {
-                setCategory(type === 'expense' ? EXPENSE_CATS[0] : INCOME_CATS[0]);
-            }, [type]);
-
-            const transactions = data.finances?.transactions || [];
-
-            const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
-            const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
-            const netBalance = totalIncome - totalExpense;
-
-            const addTransaction = (e) => {
-                e.preventDefault();
-                if (!amount || Number(amount) <= 0) return;
-                const newT = {
-                    id: Date.now().toString(),
-                    type,
-                    amount: Number(amount),
-                    category,
-                    date,
-                    comment
-                };
-                updateData(prev => ({
-                    finances: {
-                        ...prev.finances,
-                        transactions: [newT, ...(prev.finances?.transactions || [])]
-                    }
-                }));
-                setAmount('');
-                setComment('');
-            };
-
-            const deleteTransaction = (id) => {
-                updateData(prev => ({
-                    finances: {
-                        ...prev.finances,
-                        transactions: prev.finances.transactions.filter(t => t.id !== id)
-                    }
-                }));
-            };
-
-            return (
-                <div className="space-y-8 animate-fade-in">
-                    <h2 className="text-3xl font-bold text-white">Фінанси</h2>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <StatCard icon="ph-wallet" color="text-indigo-400" title="Капітал / Баланс" value={`${netBalance.toLocaleString()} ₴`} sub="Чистий залишок" />
-                        <StatCard icon="ph-arrow-up-right" color="text-emerald-400" title="Доходи" value={`+${totalIncome.toLocaleString()} ₴`} sub="Всього отримано" />
-                        <StatCard icon="ph-arrow-down-left" color="text-rose-400" title="Витрати" value={`-${totalExpense.toLocaleString()} ₴`} sub="Всього витрачено" />
-                    </div>
-
-                    <div className="glass p-5 rounded-xl">
-                        <h3 className="text-lg font-semibold text-white mb-4">Додати транзакцію</h3>
-                        <form onSubmit={addTransaction} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs text-zinc-400">Тип</label>
-                                <select value={type} onChange={e => setType(e.target.value)} className="text-sm">
-                                    <option value="expense">Витрата (-)</option>
-                                    <option value="income">Дохід (+)</option>
-                                </select>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs text-zinc-400">Сума (₴)</label>
-                                <input type="number" step="0.01" required placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} className="text-sm" />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs text-zinc-400">Категорія</label>
-                                <select value={category} onChange={e => setCategory(e.target.value)} className="text-sm">
-                                    {(type === 'expense' ? EXPENSE_CATS : INCOME_CATS).map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs text-zinc-400">Дата</label>
-                                <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="text-sm" />
-                            </div>
-                            <div className="flex flex-col gap-1 sm:col-span-2 md:col-span-1">
-                                <label className="text-xs text-zinc-400">Коментар</label>
-                                <input placeholder="Опис..." value={comment} onChange={e => setComment(e.target.value)} className="text-sm" />
-                            </div>
-                            <button type="submit" className="btn btn-primary sm:col-span-2 md:col-span-5"><i className="ph ph-plus-circle"></i> Додати запис</button>
-                        </form>
-                    </div>
-
-                    <div className="glass p-5 rounded-xl space-y-3">
-                        <h3 className="text-lg font-semibold text-white mb-2">Історія операцій</h3>
-                        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                            {transactions.length === 0 ? <p className="text-zinc-500 text-xs py-4 text-center">Операцій ще немає</p> : (
-                                transactions.map(t => (
-                                    <div key={t.id} className="flex justify-between items-center p-3 bg-[#18181b] rounded-lg border border-[#27272a]">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${t.type === 'income' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                                                <i className={`ph ${t.type === 'income' ? 'ph-arrow-up-right' : 'ph-arrow-down-left'}`}></i>
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-semibold text-white">{t.category} {t.comment && <span className="text-zinc-400 font-normal">({t.comment})</span>}</div>
-                                                <div className="text-[10px] text-zinc-500">{t.date}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {t.type === 'income' ? '+' : '-'}{Number(t.amount).toLocaleString()} ₴
-                                            </span>
-                                            <button onClick={() => deleteTransaction(t.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
