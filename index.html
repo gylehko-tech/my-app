@@ -3,220 +3,972 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life OS Ultimate - Pro</title>
+    <title>Life OS Ultimate | Enterprise Workspace</title>
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(24, 24, 27, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        input, select { background: #18181b; border: 1px solid #27272a; padding: 0.5rem; color: white; border-radius: 0.5rem; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: #090a0f; color: #f1f5f9; }
+        .glass { background: rgba(18, 20, 29, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.07); }
+        .glass-card { background: rgba(22, 26, 38, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-input { background: rgba(13, 15, 24, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); color: #f8fafc; }
+        .glass-input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #090a0f; }
+        ::-webkit-scrollbar-thumb { background: #262b3d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b4259; }
     </style>
 </head>
-<body>
+<body class="overflow-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        const supabase = window.supabase.createClient('https://qxodpzmvitxifcsgbk.supabase.co', 'sb_publishable_wRH91J0Yo97BBJoACi1_7g_ynNqmTDy');
+        const { useState, useEffect, useRef } = React;
+
+        // Ініціалізація клієнта Supabase
+        const SUPABASE_URL = 'https://qxodpzmvitxifcsgbk.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_wRH91J0Yo97BBJoACi1_7g_ynNqmTDy';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Початковий стан системи за замовчуванням
+        const defaultState = {
+            tasks: [
+                { id: 1, title: 'Технічний огляд електропідмітальної машини', category: 'work', priority: 'high', status: 'done', date: '2026-08-11' },
+                { id: 2, title: 'Оптимізація розрахунку EMA 200 на 4H графіку BTC', category: 'bot', priority: 'high', status: 'in_progress', date: '2026-08-12' },
+                { id: 3, title: 'Текстурування 3D-моделі головного персонажа', category: 'gamedev', priority: 'medium', status: 'todo', date: '2026-08-14' }
+            ],
+            work: {
+                members: ['Оператор 1', 'Оператор 2', 'Оператор 3'],
+                fleet: [
+                    { id: 'T-1', name: 'Трактор МТЗ-82 (З причепом)', status: 'Готовий', batteryFuel: '85%', lastService: '2026-08-01' },
+                    { id: 'T-2', name: 'Трактор Міні-ЮМЗ', status: 'На зміні', batteryFuel: '60%', lastService: '2026-07-28' },
+                    { id: 'S-1', name: 'Електропідмітальна машина E-Clean 400', status: 'Зарядка', batteryFuel: '92%', lastService: '2026-08-05' }
+                ],
+                shifts: [
+                    { id: 101, date: '2026-08-11', worker: 'Оператор 1', area: 'Цех №1 + Складський сектор', machine: 'Електропідмітальна машина E-Clean 400', status: 'Виконано' },
+                    { id: 102, date: '2026-08-11', worker: 'Оператор 2', area: 'Зовнішня територія та підʼїзд', machine: 'Трактор МТЗ-82 (З причепом)', status: 'В процесі' },
+                    { id: 103, date: '2026-08-11', worker: 'Оператор 3', area: 'Сортувальний майданчик', machine: 'Ручний інвентар', status: 'Заплановано' }
+                ]
+            },
+            bot: {
+                status: 'Running',
+                symbol: 'BTC/USDT',
+                timeframe: '4H',
+                currentPrice: 61450,
+                ema50: 60200,
+                ema200: 58900,
+                macroTrend: 'BULLISH',
+                autoTrading: true,
+                winRate: '68.4%',
+                totalTrades: 142,
+                pnlToday: '+3.2%',
+                logs: [
+                    { id: 1, time: '15:45:10', type: 'INFO', msg: 'Macro Trend Check: EMA50 (60200) > EMA200 (58900) -> BULLISH' },
+                    { id: 2, time: '14:20:00', type: 'TRADE', msg: 'BUY signal executed @ 61200 USDT. TP: 62500, SL: 60400' },
+                    { id: 3, time: '12:00:15', type: 'AUDIT', msg: 'Health check OK. Telegram alert sent successfully.' }
+                ]
+            },
+            gamedev: {
+                activeProject: 'Cyber Horizon',
+                projects: ['Cyber Horizon', 'Medieval Tactics', 'Project Nebula'],
+                assets: [
+                    { id: 1, name: 'Cyberpunk Drone v2', type: '3D Model', format: '.FBX / .BLEND', stage: 'Engine Ready', project: 'Cyber Horizon' },
+                    { id: 2, name: 'Sci-Fi Metal Shader', type: 'Material', format: '.HLSL / PBR', stage: 'Texturing', project: 'Cyber Horizon' },
+                    { id: 3, name: 'Plasma Rifle Sound Pack', type: 'Audio SFX', format: '.WAV 24bit', stage: 'Ready', project: 'Cyber Horizon' },
+                    { id: 4, name: 'Main Boss Rig & Animations', type: 'Animation', format: '.FBX', stage: 'Rigging', project: 'Medieval Tactics' }
+                ]
+            },
+            sports: {
+                waterCurrent: 1750,
+                waterGoal: 3000,
+                weight: 78.5,
+                weightGoal: 82.0,
+                workouts: [
+                    { id: 1, date: '2026-08-11', name: 'Силове тренування (Груди + Трицепс)', duration: '65 хв', calories: 480, status: 'Completed' },
+                    { id: 2, date: '2026-08-09', name: 'Кардіо + Прес', duration: '45 хв', calories: 360, status: 'Completed' }
+                ]
+            },
+            finance: {
+                currency: '₴',
+                balance: 142800,
+                monthlyIncome: 65000,
+                monthlyExpenses: 28400,
+                transactions: [
+                    { id: 1, date: '2026-08-10', desc: 'Виплата за прибирання обʼєкту А-1', amount: 35000, type: 'income', category: 'Facility' },
+                    { id: 2, date: '2026-08-09', desc: 'Запчастини до трактора МТЗ', amount: 4200, type: 'expense', category: 'Equipment' },
+                    { id: 3, date: '2026-08-08', desc: 'Сервер VPS для Trading Bot', amount: 650, type: 'expense', category: 'Trading' },
+                    { id: 4, date: '2026-08-07', desc: 'Прибуток з крипто-бота (Session #8)', amount: 8900, type: 'income', category: 'Trading' }
+                ]
+            }
+        };
 
         const App = () => {
             const [tab, setTab] = useState('overview');
-            const [syncStatus, setSyncStatus] = useState('Підключення...');
-            const [data, setData] = useState({
-                tasks: [],
-                team: { members: ['Користувач 1', 'Користувач 2', 'Користувач 3'], shifts: [] },
-                bot: { status: 'Stopped', ema: 0, logs: [] },
-                assets: [],
-                finance: { items: [] }
+            const [syncStatus, setSyncStatus] = useState('Ініціалізація...');
+            const [data, setData] = useState(() => {
+                const cached = localStorage.getItem('life_os_data_v2');
+                return cached ? JSON.parse(cached) : defaultState;
             });
+            const [isSaving, setIsSaving] = useState(false);
 
-            // Завантаження та Realtime підписка
+            // 1. Початкове завантаження та Realtime-слухач
             useEffect(() => {
-                const loadData = async () => {
-                    const { data: remote, error } = await supabase.from('app_state').select('payload').eq('id', 1).single();
-                    if (error) {
-                        setSyncStatus('Помилка зʼєднання');
-                        console.error(error);
-                    } else if (remote && remote.payload && Object.keys(remote.payload).length > 0) {
-                        setData(remote.payload);
-                        setSyncStatus('Синхронізовано');
-                    } else {
-                        setSyncStatus('Готовий до роботи');
+                const fetchRemoteData = async () => {
+                    setSyncStatus('Синхронізація...');
+                    try {
+                        const { data: remote, error } = await supabase
+                            .from('app_state')
+                            .select('payload')
+                            .eq('id', 1)
+                            .single();
+
+                        if (error && error.code !== 'PGRST116') {
+                            console.error('Fetch error:', error);
+                            setSyncStatus('Локальний режим');
+                        } else if (remote && remote.payload && Object.keys(remote.payload).length > 0) {
+                            setData(remote.payload);
+                            localStorage.setItem('life_os_data_v2', JSON.stringify(remote.payload));
+                            setSyncStatus('Синхронізовано');
+                        } else {
+                            // Перший запуск: створюємо перший запис у БД
+                            await supabase.from('app_state').upsert({ id: 1, payload: defaultState });
+                            setSyncStatus('Базу створено');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        setSyncStatus('Офлайн режим');
                     }
                 };
 
-                loadData();
+                fetchRemoteData();
 
-                // Слухаємо зміни з інших пристроїв наживо
-                const channel = supabase.channel('realtime:app_state')
+                // Live Realtime підписка на будь-які зміни з інших пристроїв
+                const channel = supabase
+                    .channel('schema-db-changes')
                     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_state' }, (payload) => {
                         if (payload.new && payload.new.payload) {
                             setData(payload.new.payload);
-                            setSyncStatus('Оновлено щойно');
+                            localStorage.setItem('life_os_data_v2', JSON.stringify(payload.new.payload));
+                            setSyncStatus('Оновлено наживо');
+                            setTimeout(() => setSyncStatus('Синхронізовано'), 2000);
                         }
                     })
                     .subscribe();
 
-                return () => supabase.removeChannel(channel);
+                return () => { supabase.removeChannel(channel); };
             }, []);
 
-            // Збереження
-            const sync = async (newData) => {
-                const updated = { ...data, ...newData };
-                setData(updated);
+            // 2. Універсальна функція синхронізації
+            const updateState = async (updates) => {
+                const newState = { ...data, ...updates };
+                setData(newState);
+                localStorage.setItem('life_os_data_v2', JSON.stringify(newState));
+                setIsSaving(true);
                 setSyncStatus('Збереження...');
-                const { error } = await supabase.from('app_state').upsert({ id: 1, payload: updated });
-                if (error) {
-                    setSyncStatus('Помилка збереження');
-                    console.error(error);
-                } else {
-                    setSyncStatus('Синхронізовано');
+
+                try {
+                    const { error } = await supabase.from('app_state').upsert({ id: 1, payload: newState });
+                    if (error) {
+                        console.error('Save error:', error);
+                        setSyncStatus('Помилка хмари (Збережено локально)');
+                    } else {
+                        setSyncStatus('Синхронізовано');
+                    }
+                } catch (e) {
+                    setSyncStatus('Збережено локально');
+                } finally {
+                    setIsSaving(false);
                 }
             };
 
-            const NavItem = ({ id, icon, label }) => (
-                <button onClick={() => setTab(id)} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${tab === id ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-800'}`}>
-                    <i className={`ph ph-${icon}`}></i> {label}
+            const NavButton = ({ id, icon, label, badge }) => (
+                <button
+                    onClick={() => setTab(id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                        tab === id
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <i className={`ph ${icon} text-xl`}></i>
+                        <span>{label}</span>
+                    </div>
+                    {badge && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                            {badge}
+                        </span>
+                    )}
                 </button>
             );
 
             return (
-                <div className="flex h-screen">
-                    <aside className="w-64 glass p-6 border-r border-zinc-800 flex flex-col justify-between">
-                        <div>
-                            <h1 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
-                                <i className="ph ph-sparkle text-indigo-400"></i> Life OS
-                            </h1>
-                            <nav className="space-y-2">
-                                <NavItem id="overview" icon="house" label="Огляд" />
-                                <NavItem id="work" icon="broom" label="Facility (Work)" />
-                                <NavItem id="bot" icon="robot" label="Trading Bot" />
-                                <NavItem id="gamedev" icon="game-controller" label="GameDev" />
-                                <NavItem id="finance" icon="wallet" label="Фінанси" />
+                <div className="flex h-screen w-screen overflow-hidden bg-[#090a0f]">
+                    {/* Лівий Сайдбар */}
+                    <aside className="w-72 glass border-r border-slate-800/60 p-5 flex flex-col justify-between hidden md:flex">
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 px-2">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                    <i className="ph ph-lightning text-white text-2xl font-bold"></i>
+                                </div>
+                                <div>
+                                    <h1 className="font-extrabold text-lg tracking-wide text-white">LIFE OS</h1>
+                                    <p className="text-xs text-indigo-400 font-semibold tracking-wider">ULTIMATE PRO v3.2</p>
+                                </div>
+                            </div>
+
+                            <nav className="space-y-1.5">
+                                <NavButton id="overview" icon="ph-squares-four" label="Головний огляд" />
+                                <NavButton id="work" icon="ph-truck" label="Facility (Work)" badge="3 ос." />
+                                <NavButton id="bot" icon="ph-robot" label="Trading Bot" badge={data.bot.status} />
+                                <NavButton id="gamedev" icon="ph-game-controller" label="GameDev Hub" badge={`${data.gamedev.assets.length}`} />
+                                <NavButton id="tasks" icon="ph-check-square-offset" label="Задачі & Kanban" badge={`${data.tasks.filter(t=>t.status!=='done').length}`} />
+                                <NavButton id="sports" icon="ph-barbell" label="Спорт & Здоровʼя" />
+                                <NavButton id="finance" icon="ph-chart-polar" label="Фінанси" />
                             </nav>
                         </div>
-                        <div className="text-xs text-zinc-500 flex items-center gap-2 border-t border-zinc-800 pt-3">
-                            <div className={`w-2 h-2 rounded-full ${syncStatus === 'Синхронізовано' || syncStatus === 'Оновлено щойно' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                            {syncStatus}
+
+                        {/* Хмарний статус-бар */}
+                        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-400">Хмара Supabase</span>
+                                <span className="flex items-center gap-1.5 font-medium text-emerald-400">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {syncStatus}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => updateState({})}
+                                className="w-full text-xs py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center gap-1.5 transition"
+                            >
+                                <i className={`ph ph-arrows-clockwise ${isSaving ? 'animate-spin' : ''}`}></i>
+                                Примусова синхронізація
+                            </button>
                         </div>
                     </aside>
 
-                    <main className="flex-1 p-8 overflow-y-auto">
-                        {tab === 'overview' && (
-                            <div className="space-y-4">
-                                <h2 className="text-3xl font-bold">Головний огляд</h2>
-                                <p className="text-zinc-400">Система готова. Оберіть розділ у лівому меню.</p>
+                    {/* Головна робоча зона */}
+                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                        {/* Верхня панель */}
+                        <header className="h-16 glass border-b border-slate-800/60 px-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="md:hidden flex gap-2 overflow-x-auto py-1">
+                                    {['overview', 'work', 'bot', 'gamedev', 'tasks', 'sports', 'finance'].map(t => (
+                                        <button key={t} onClick={() => setTab(t)} className={`px-3 py-1 text-xs rounded-lg ${tab===t?'bg-indigo-600 text-white':'bg-slate-800 text-slate-400'}`}>
+                                            {t.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                                <h2 className="text-xl font-bold text-white hidden md:block capitalize">
+                                    {tab === 'overview' && 'Центр керування'}
+                                    {tab === 'work' && 'Facility Maintenance & Fleet (3-Person Team)'}
+                                    {tab === 'bot' && 'Криптотрейдинг & Macro EMA Engine'}
+                                    {tab === 'gamedev' && 'Game Development Asset Pipeline'}
+                                    {tab === 'tasks' && 'Менеджер задач & Kanban'}
+                                    {tab === 'sports' && 'Спортивні тренування & Показники'}
+                                    {tab === 'finance' && 'Фінансовий облік & Баланс'}
+                                </h2>
                             </div>
-                        )}
-                        {tab === 'work' && <WorkTab data={data} sync={sync} />}
-                        {tab === 'bot' && <BotTab data={data} sync={sync} />}
-                        {tab === 'gamedev' && <GamedevTab data={data} sync={sync} />}
-                        {tab === 'finance' && <FinanceTab data={data} sync={sync} />}
-                    </main>
-                </div>
-            );
-        };
 
-        const WorkTab = ({ data, sync }) => {
-            const addShift = (e) => {
-                e.preventDefault();
-                const worker = e.target.worker.value;
-                const task = e.target.task.value;
-                if (!task) return;
-                const newShift = { id: Date.now(), worker, task };
-                sync({ team: { ...data.team, shifts: [...(data.team?.shifts || []), newShift] } });
-                e.target.task.value = '';
-            };
-            return (
-                <div className="space-y-6">
-                    <h2 className="text-2xl font-bold">Facility Maintenance (Команда)</h2>
-                    <form onSubmit={addShift} className="glass p-4 rounded-xl flex gap-2">
-                        <select name="worker">{data.team?.members?.map(m => <option key={m}>{m}</option>)}</select>
-                        <input name="task" placeholder="Задача для зміни..." className="flex-1" />
-                        <button className="bg-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-500">Додати</button>
-                    </form>
-                    <div className="grid gap-2">
-                        {data.team?.shifts?.map(s => (
-                            <div key={s.id} className="bg-zinc-900 border border-zinc-800 p-3 rounded-lg flex justify-between">
-                                <span className="font-semibold text-indigo-300">{s.worker}</span>
-                                <span className="text-zinc-300">{s.task}</span>
+                            <div className="flex items-center gap-4 text-sm text-slate-400">
+                                <div className="hidden sm:flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800">
+                                    <i className="ph ph-calendar-blank text-indigo-400"></i>
+                                    <span>Вівторок, 11 Серпня 2026</span>
+                                </div>
                             </div>
-                        ))}
+                        </header>
+
+                        {/* Вміст активної вкладки */}
+                        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {tab === 'overview' && <OverviewTab data={data} setTab={setTab} updateState={updateState} />}
+                            {tab === 'work' && <WorkTab data={data} updateState={updateState} />}
+                            {tab === 'bot' && <BotTab data={data} updateState={updateState} />}
+                            {tab === 'gamedev' && <GamedevTab data={data} updateState={updateState} />}
+                            {tab === 'tasks' && <TasksTab data={data} updateState={updateState} />}
+                            {tab === 'sports' && <SportsTab data={data} updateState={updateState} />}
+                            {tab === 'finance' && <FinanceTab data={data} updateState={updateState} />}
+                        </main>
                     </div>
                 </div>
             );
         };
 
-        const BotTab = ({ data, sync }) => {
-            const toggleBot = () => sync({ bot: { ...data.bot, status: data.bot?.status === 'Running' ? 'Stopped' : 'Running' } });
+        // ==========================================
+        // 1. ГОЛОВНИЙ ОГЛЯД (OVERVIEW)
+        // ==========================================
+        const OverviewTab = ({ data, setTab, updateState }) => {
             return (
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-bold text-indigo-400">Trading Bot Control</h2>
-                    <div className="glass p-6 rounded-xl space-y-4">
-                        <div className="text-lg">Статус бота: <span className={data.bot?.status === 'Running' ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>{data.bot?.status || 'Stopped'}</span></div>
-                        <button onClick={toggleBot} className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg font-medium">Перемкнути статус</button>
-                        <div className="pt-2">
-                            <label className="block text-sm text-zinc-400 mb-1">Показник EMA (Macro Trend):</label>
-                            <input type="number" onChange={e => sync({ bot: { ...data.bot, ema: e.target.value } })} value={data.bot?.ema || ''} placeholder="Напр. 65000" />
+                    {/* Швидкі показники */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div onClick={() => setTab('work')} className="glass-card p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition">
+                            <div className="flex justify-between items-start">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Зміни команди</span>
+                                <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><i className="ph ph-users-three text-xl"></i></span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-2xl font-bold">{data.work.shifts.length}</span>
+                                <span className="text-xs text-emerald-400 font-medium">3 оператори готові</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Трактори та підмітальні машини</p>
+                        </div>
+
+                        <div onClick={() => setTab('bot')} className="glass-card p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition">
+                            <div className="flex justify-between items-start">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trading Bot</span>
+                                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><i className="ph ph-trend-up text-xl"></i></span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-2xl font-bold">{data.bot.macroTrend}</span>
+                                <span className="text-xs text-emerald-400 font-medium">{data.bot.pnlToday}</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">EMA 50 &gt; EMA 200 (BTC 4H)</p>
+                        </div>
+
+                        <div onClick={() => setTab('gamedev')} className="glass-card p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition">
+                            <div className="flex justify-between items-start">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Game Assets</span>
+                                <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400"><i className="ph ph-cube text-xl"></i></span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-2xl font-bold">{data.gamedev.assets.length}</span>
+                                <span className="text-xs text-purple-400 font-medium">В пайплайні</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Проєкт: {data.gamedev.activeProject}</p>
+                        </div>
+
+                        <div onClick={() => setTab('finance')} className="glass-card p-5 rounded-2xl cursor-pointer hover:border-indigo-500/50 transition">
+                            <div className="flex justify-between items-start">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Баланс (Net)</span>
+                                <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400"><i className="ph ph-wallet text-xl"></i></span>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-2xl font-bold">{data.finance.balance.toLocaleString()} ₴</span>
+                            </div>
+                            <p className="text-xs text-emerald-400 mt-1">+{data.finance.monthlyIncome.toLocaleString()} ₴ цього місяця</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Активні зміни прибирання */}
+                        <div className="lg:col-span-2 glass p-6 rounded-2xl space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                                    <i className="ph ph-truck text-indigo-400"></i> Поточні зміни та техніка (Facility)
+                                </h3>
+                                <button onClick={() => setTab('work')} className="text-xs text-indigo-400 hover:underline">Детальніше &rarr;</button>
+                            </div>
+                            <div className="space-y-2.5">
+                                {data.work.shifts.map(s => (
+                                    <div key={s.id} className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-xl flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <div className="font-semibold text-sm text-slate-200">{s.worker} — <span className="text-indigo-400">{s.machine}</span></div>
+                                            <div className="text-xs text-slate-400">{s.area}</div>
+                                        </div>
+                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${s.status === 'Виконано' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : s.status === 'В процесі' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400'}`}>
+                                            {s.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Trading Bot Quick Signal */}
+                        <div className="glass p-6 rounded-2xl space-y-4">
+                            <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                                <i className="ph ph-lightning text-amber-400"></i> Сигнал Macro EMA
+                            </h3>
+                            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-3">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-400">Пара / Таймфрейм:</span>
+                                    <span className="font-bold text-white">{data.bot.symbol} ({data.bot.timeframe})</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-400">EMA 50 (Fast):</span>
+                                    <span className="font-bold text-indigo-400">{data.bot.ema50} $</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-400">EMA 200 (Slow):</span>
+                                    <span className="font-bold text-violet-400">{data.bot.ema200} $</span>
+                                </div>
+                                <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-slate-300">Загальний тренд:</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        {data.bot.macroTrend} (BUY ONLY)
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const GamedevTab = ({ data, sync }) => {
-            const addAsset = (e) => {
+        // ==========================================
+        // 2. FACILITY & CLEANING (WORK TAB)
+        // ==========================================
+        const WorkTab = ({ data, updateState }) => {
+            const [worker, setWorker] = useState(data.work.members[0]);
+            const [area, setArea] = useState('');
+            const [machine, setMachine] = useState(data.work.fleet[0].name);
+
+            const addShift = (e) => {
                 e.preventDefault();
-                const name = e.target.assetName.value;
-                if (!name) return;
-                const newAsset = { id: Date.now(), name };
-                sync({ assets: [...(data.assets || []), newAsset] });
-                e.target.assetName.value = '';
+                if (!area.trim()) return;
+                const newShift = {
+                    id: Date.now(),
+                    date: new Date().toISOString().split('T')[0],
+                    worker,
+                    area,
+                    machine,
+                    status: 'Заплановано'
+                };
+                updateState({ work: { ...data.work, shifts: [newShift, ...data.work.shifts] } });
+                setArea('');
             };
+
+            const toggleStatus = (id) => {
+                const updated = data.work.shifts.map(s => {
+                    if (s.id === id) {
+                        const next = s.status === 'Заплановано' ? 'В процесі' : s.status === 'В процесі' ? 'Виконано' : 'Заплановано';
+                        return { ...s, status: next };
+                    }
+                    return s;
+                });
+                updateState({ work: { ...data.work, shifts: updated } });
+            };
+
+            const deleteShift = (id) => {
+                updateState({ work: { ...data.work, shifts: data.work.shifts.filter(s => s.id !== id) } });
+            };
+
             return (
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-bold text-purple-400">Game Assets Manager</h2>
-                    <form onSubmit={addAsset} className="flex gap-2">
-                        <input name="assetName" placeholder="Назва асету..." className="flex-1" />
-                        <button className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg font-medium">Додати асет</button>
+                    {/* Стан техніки */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {data.work.fleet.map(f => (
+                            <div key={f.id} className="glass-card p-4 rounded-2xl space-y-2">
+                                <div className="flex justify-between items-start">
+                                    <span className="font-bold text-sm text-slate-200">{f.name}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${f.status === 'Готовий' ? 'bg-emerald-500/20 text-emerald-400' : f.status === 'На зміні' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                        {f.status}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+                                    <span>Заряд / Паливо: <strong className="text-white">{f.batteryFuel}</strong></span>
+                                    <span>ТО: {f.lastService}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Додати зміну / призначення */}
+                    <form onSubmit={addShift} className="glass p-5 rounded-2xl space-y-4">
+                        <h3 className="font-bold text-base text-white">Призначити зміну для команди</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Виконавець (Команда 3 осіб)</label>
+                                <select value={worker} onChange={e => setWorker(e.target.value)} className="w-full glass-input p-2.5 rounded-xl text-sm">
+                                    {data.work.members.map(m => <option key={m} value={m} className="bg-slate-900">{m}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Техніка / Інструмент</label>
+                                <select value={machine} onChange={e => setMachine(e.target.value)} className="w-full glass-input p-2.5 rounded-xl text-sm">
+                                    {data.work.fleet.map(f => <option key={f.id} value={f.name} className="bg-slate-900">{f.name}</option>)}
+                                    <option value="Ручний інвентар" className="bg-slate-900">Ручний інвентар</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Зона / Сектор роботи</label>
+                                <input value={area} onChange={e => setArea(e.target.value)} placeholder="Напр. Цех №3, стоянка..." className="w-full glass-input p-2.5 rounded-xl text-sm" />
+                            </div>
+                        </div>
+                        <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-indigo-600/30">
+                            Додати зміну в графік
+                        </button>
                     </form>
-                    <div className="grid grid-cols-2 gap-3">
-                        {data.assets?.map(a => <div key={a.id} className="p-3 bg-zinc-900 border border-purple-900/50 rounded-lg">{a.name}</div>)}
+
+                    {/* Таблиця змін */}
+                    <div className="glass rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 font-bold text-sm text-slate-300">
+                            Журнал змін та прибирання
+                        </div>
+                        <div className="divide-y divide-slate-800/60">
+                            {data.work.shifts.map(s => (
+                                <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-900/40 transition">
+                                    <div className="space-y-1">
+                                        <div className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                                            <span>{s.worker}</span>
+                                            <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">{s.machine}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-400">{s.area} • {s.date}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => toggleStatus(s.id)} className={`text-xs px-3 py-1.5 rounded-lg font-medium border transition ${s.status === 'Виконано' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : s.status === 'В процесі' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                                            {s.status} (Змінити)
+                                        </button>
+                                        <button onClick={() => deleteShift(s.id)} className="p-1.5 text-slate-500 hover:text-red-400 transition">
+                                            <i className="ph ph-trash text-base"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        const FinanceTab = ({ data, sync }) => {
-            const addTrans = (e) => {
-                e.preventDefault();
-                const desc = e.target.desc.value;
-                const amount = e.target.amount.value;
-                if (!desc || !amount) return;
-                const item = { id: Date.now(), desc, amount };
-                sync({ finance: { items: [...(data.finance?.items || []), item] } });
-                e.target.desc.value = '';
-                e.target.amount.value = '';
+        // ==========================================
+        // 3. TRADING BOT TAB
+        // ==========================================
+        const BotTab = ({ data, updateState }) => {
+            const [ema50Input, setEma50Input] = useState(data.bot.ema50);
+            const [ema200Input, setEma200Input] = useState(data.bot.ema200);
+
+            const toggleBotStatus = () => {
+                const next = data.bot.status === 'Running' ? 'Stopped' : 'Running';
+                updateState({ bot: { ...data.bot, status: next } });
             };
+
+            const recalculateTrend = () => {
+                const e50 = parseFloat(ema50Input) || 0;
+                const e200 = parseFloat(ema200Input) || 0;
+                const trend = e50 > e200 ? 'BULLISH' : 'BEARISH';
+                const newLog = {
+                    id: Date.now(),
+                    time: new Date().toLocaleTimeString(),
+                    type: 'CALC',
+                    msg: `Manual Recalc: EMA50 (${e50}) vs EMA200 (${e200}) -> Trend is ${trend}`
+                };
+                updateState({
+                    bot: {
+                        ...data.bot,
+                        ema50: e50,
+                        ema200: e200,
+                        macroTrend: trend,
+                        logs: [newLog, ...data.bot.logs]
+                    }
+                });
+            };
+
             return (
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-bold text-emerald-400">Фінанси</h2>
-                    <form onSubmit={addTrans} className="flex gap-2">
-                        <input name="desc" placeholder="Опис витрати..." className="flex-1" />
-                        <input name="amount" type="number" placeholder="Сума (₴)" className="w-32" />
-                        <button className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-medium">Додати</button>
+                    {/* Верхня панель контролю */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="glass p-6 rounded-2xl space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400 uppercase">Стан процесу бота</span>
+                                <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${data.bot.status === 'Running' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                    {data.bot.status}
+                                </span>
+                            </div>
+                            <div className="text-3xl font-extrabold text-white">{data.bot.symbol}</div>
+                            <button onClick={toggleBotStatus} className={`w-full py-3 rounded-xl font-bold text-sm transition shadow-lg ${data.bot.status === 'Running' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'}`}>
+                                {data.bot.status === 'Running' ? 'ЗУПИНИТИ БОТА' : 'ЗАПУСТИТИ АВТО-ТРЕЙДИНГ'}
+                            </button>
+                        </div>
+
+                        {/* Налаштування EMA Trend */}
+                        <div className="glass p-6 rounded-2xl space-y-4 lg:col-span-2">
+                            <h3 className="font-bold text-base text-white flex items-center gap-2">
+                                <i className="ph ph-chart-line-up text-indigo-400"></i> Аналізатор тренду EMA (Macro Filter)
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">EMA 50 (Швидка ковзна):</label>
+                                    <input type="number" value={ema50Input} onChange={e => setEma50Input(e.target.value)} className="w-full glass-input p-2.5 rounded-xl text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">EMA 200 (Повільна трендова):</label>
+                                    <input type="number" value={ema200Input} onChange={e => setE200Input(e.target.value)} className="w-full glass-input p-2.5 rounded-xl text-sm" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-2">
+                                <div className="text-xs text-slate-300">
+                                    Поточний сигнал: <strong className={data.bot.macroTrend === 'BULLISH' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{data.bot.macroTrend}</strong>
+                                </div>
+                                <button onClick={recalculateTrend} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition">
+                                    Перерахувати Macro Trend
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Логи бота */}
+                    <div className="glass rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                            <span className="font-bold text-sm text-slate-300 flex items-center gap-2">
+                                <i className="ph ph-terminal-window text-indigo-400"></i> Логи виконання та Telegram сигнали
+                            </span>
+                        </div>
+                        <div className="p-4 bg-slate-950/60 font-mono text-xs space-y-2 max-h-72 overflow-y-auto">
+                            {data.bot.logs.map(l => (
+                                <div key={l.id} className="flex gap-3">
+                                    <span className="text-slate-500">[{l.time}]</span>
+                                    <span className={`font-bold ${l.type === 'TRADE' ? 'text-emerald-400' : l.type === 'INFO' ? 'text-indigo-400' : 'text-amber-400'}`}>
+                                        [{l.type}]
+                                    </span>
+                                    <span className="text-slate-300">{l.msg}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 4. GAMEDEV HUB TAB
+        // ==========================================
+        const GamedevTab = ({ data, updateState }) => {
+            const [assetName, setAssetName] = useState('');
+            const [assetType, setAssetType] = useState('3D Model');
+            const [stage, setStage] = useState('Concept');
+            const [project, setProject] = useState(data.gamedev.activeProject);
+
+            const addAsset = (e) => {
+                e.preventDefault();
+                if (!assetName.trim()) return;
+                const newAsset = {
+                    id: Date.now(),
+                    name: assetName,
+                    type: assetType,
+                    format: assetType === '3D Model' ? '.FBX' : assetType === 'Audio SFX' ? '.WAV' : '.PNG',
+                    stage,
+                    project
+                };
+                updateState({ gamedev: { ...data.gamedev, assets: [newAsset, ...data.gamedev.assets] } });
+                setAssetName('');
+            };
+
+            const deleteAsset = (id) => {
+                updateState({ gamedev: { ...data.gamedev, assets: data.gamedev.assets.filter(a => a.id !== id) } });
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* Додати новий асет */}
+                    <form onSubmit={addAsset} className="glass p-5 rounded-2xl space-y-4">
+                        <h3 className="font-bold text-base text-white flex items-center gap-2">
+                            <i className="ph ph-plus-circle text-purple-400"></i> Реєстрація нового асету в пайплайн
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder="Назва асету (напр. Cyber Sword v1)..." className="glass-input p-2.5 rounded-xl text-sm" />
+                            <select value={assetType} onChange={e => setAssetType(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                                <option value="3D Model" className="bg-slate-900">3D Model (Mesh)</option>
+                                <option value="Texture" className="bg-slate-900">Texture / Material</option>
+                                <option value="Animation" className="bg-slate-900">Animation / Rig</option>
+                                <option value="Audio SFX" className="bg-slate-900">Audio / SFX</option>
+                                <option value="UI Element" className="bg-slate-900">UI / HUD</option>
+                            </select>
+                            <select value={stage} onChange={e => setStage(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                                <option value="Concept" className="bg-slate-900">1. Concept</option>
+                                <option value="Modeling" className="bg-slate-900">2. Modeling</option>
+                                <option value="Rigging" className="bg-slate-900">3. Rigging</option>
+                                <option value="Texturing" className="bg-slate-900">4. Texturing</option>
+                                <option value="Engine Ready" className="bg-slate-900">5. Engine Ready</option>
+                            </select>
+                            <select value={project} onChange={e => setProject(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                                {data.gamedev.projects.map(p => <option key={p} value={p} className="bg-slate-900">{p}</option>)}
+                            </select>
+                        </div>
+                        <button type="submit" className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-purple-600/30">
+                            Додати в розробку
+                        </button>
                     </form>
-                    <div className="space-y-2">
-                        {data.finance?.items?.map(i => (
-                            <div key={i.id} className="flex justify-between p-3 bg-zinc-900 border border-zinc-800 rounded-lg">
-                                <span>{i.desc}</span>
-                                <span className="font-semibold text-emerald-400">{i.amount} ₴</span>
+
+                    {/* Сітка асетів */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.gamedev.assets.map(a => (
+                            <div key={a.id} className="glass-card p-4 rounded-2xl space-y-3 relative group">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h4 className="font-bold text-sm text-slate-100">{a.name}</h4>
+                                        <p className="text-xs text-purple-400 font-medium">{a.project}</p>
+                                    </div>
+                                    <button onClick={() => deleteAsset(a.id)} className="text-slate-500 hover:text-rose-400 transition">
+                                        <i className="ph ph-trash text-base"></i>
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+                                    <span>{a.type} ({a.format})</span>
+                                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
+                                        {a.stage}
+                                    </span>
+                                </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 5. TASKS & KANBAN TAB
+        // ==========================================
+        const TasksTab = ({ data, updateState }) => {
+            const [title, setTitle] = useState('');
+            const [category, setCategory] = useState('work');
+            const [priority, setPriority] = useState('medium');
+
+            const addTask = (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                const newTask = {
+                    id: Date.now(),
+                    title,
+                    category,
+                    priority,
+                    status: 'todo',
+                    date: new Date().toISOString().split('T')[0]
+                };
+                updateState({ tasks: [newTask, ...data.tasks] });
+                setTitle('');
+            };
+
+            const setTaskStatus = (id, newStatus) => {
+                const updated = data.tasks.map(t => t.id === id ? { ...t, status: newStatus } : t);
+                updateState({ tasks: updated });
+            };
+
+            const deleteTask = (id) => {
+                updateState({ tasks: data.tasks.filter(t => t.id !== id) });
+            };
+
+            const cols = [
+                { id: 'todo', label: 'До виконання', color: 'border-slate-700' },
+                { id: 'in_progress', label: 'В роботі', color: 'border-indigo-600' },
+                { id: 'done', label: 'Завершено', color: 'border-emerald-600' }
+            ];
+
+            return (
+                <div className="space-y-6">
+                    {/* Створення задачі */}
+                    <form onSubmit={addTask} className="glass p-5 rounded-2xl flex flex-col sm:flex-row gap-3">
+                        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Введіть нову задачу..." className="flex-1 glass-input p-2.5 rounded-xl text-sm" />
+                        <select value={category} onChange={e => setCategory(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                            <option value="work" className="bg-slate-900">Facility / Work</option>
+                            <option value="bot" className="bg-slate-900">Trading Bot</option>
+                            <option value="gamedev" className="bg-slate-900">GameDev</option>
+                            <option value="personal" className="bg-slate-900">Особисте</option>
+                        </select>
+                        <select value={priority} onChange={e => setPriority(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                            <option value="high" className="bg-slate-900">Високий 🔥</option>
+                            <option value="medium" className="bg-slate-900">Середній ⚡</option>
+                            <option value="low" className="bg-slate-900">Низький ☕</option>
+                        </select>
+                        <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition">
+                            Створити
+                        </button>
+                    </form>
+
+                    {/* Kanban Board */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {cols.map(c => (
+                            <div key={c.id} className="glass p-4 rounded-2xl space-y-3">
+                                <div className={`flex items-center justify-between pb-2 border-b-2 ${c.color}`}>
+                                    <h4 className="font-bold text-sm text-slate-200">{c.label}</h4>
+                                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400">
+                                        {data.tasks.filter(t => t.status === c.id).length}
+                                    </span>
+                                </div>
+                                <div className="space-y-3 min-h-[250px]">
+                                    {data.tasks.filter(t => t.status === c.id).map(t => (
+                                        <div key={t.id} className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <p className="text-sm font-medium text-slate-100">{t.title}</p>
+                                                <button onClick={() => deleteTask(t.id)} className="text-slate-500 hover:text-rose-400">
+                                                    <i className="ph ph-trash"></i>
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-1 text-xs">
+                                                <span className="px-2 py-0.5 rounded bg-slate-800 text-indigo-400 font-semibold uppercase text-[10px]">
+                                                    {t.category}
+                                                </span>
+                                                <div className="flex gap-1">
+                                                    {c.id !== 'todo' && <button onClick={() => setTaskStatus(t.id, 'todo')} className="p-1 hover:text-white">&larr;</button>}
+                                                    {c.id !== 'in_progress' && <button onClick={() => setTaskStatus(t.id, 'in_progress')} className="p-1 hover:text-indigo-400">⚡</button>}
+                                                    {c.id !== 'done' && <button onClick={() => setTaskStatus(t.id, 'done')} className="p-1 hover:text-emerald-400">&rarr;</button>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 6. SPORTS TAB
+        // ==========================================
+        const SportsTab = ({ data, updateState }) => {
+            const addWater = (amount) => {
+                const next = Math.max(0, data.sports.waterCurrent + amount);
+                updateState({ sports: { ...data.sports, waterCurrent: next } });
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Водний баланс */}
+                        <div className="glass p-6 rounded-2xl space-y-4">
+                            <h3 className="font-bold text-base text-white flex items-center gap-2">
+                                <i className="ph ph-drop text-cyan-400"></i> Трекер води
+                            </h3>
+                            <div className="text-3xl font-extrabold text-cyan-400">
+                                {data.sports.waterCurrent} / {data.sports.waterGoal} мл
+                            </div>
+                            <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                                <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (data.sports.waterCurrent/data.sports.waterGoal)*100)}%` }}></div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => addWater(250)} className="flex-1 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold">+250 мл</button>
+                                <button onClick={() => addWater(500)} className="flex-1 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold">+500 мл</button>
+                                <button onClick={() => addWater(-250)} className="py-2 px-4 bg-slate-800 text-slate-400 rounded-xl text-xs">-</button>
+                            </div>
+                        </div>
+
+                        {/* Вага та ціль */}
+                        <div className="glass p-6 rounded-2xl space-y-4">
+                            <h3 className="font-bold text-base text-white flex items-center gap-2">
+                                <i className="ph ph-barbell text-indigo-400"></i> Поточна вага та ціль
+                            </h3>
+                            <div className="text-3xl font-extrabold text-white">
+                                {data.sports.weight} кг <span className="text-sm font-medium text-slate-400">(Ціль: {data.sports.weightGoal} кг)</span>
+                            </div>
+                            <p className="text-xs text-slate-400">Заплановано тренувань цього тижня: 4 сесії</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 7. FINANCE TAB
+        // ==========================================
+        const FinanceTab = ({ data, updateState }) => {
+            const [desc, setDesc] = useState('');
+            const [amount, setAmount] = useState('');
+            const [type, setType] = useState('expense');
+            const [category, setCategory] = useState('Facility');
+
+            const addTransaction = (e) => {
+                e.preventDefault();
+                const num = parseFloat(amount);
+                if (!desc.trim() || isNaN(num) || num <= 0) return;
+
+                const newTx = {
+                    id: Date.now(),
+                    date: new Date().toISOString().split('T')[0],
+                    desc,
+                    amount: num,
+                    type,
+                    category
+                };
+
+                const newBalance = type === 'income' ? data.finance.balance + num : data.finance.balance - num;
+                const newIncome = type === 'income' ? data.finance.monthlyIncome + num : data.finance.monthlyIncome;
+                const newExpenses = type === 'expense' ? data.finance.monthlyExpenses + num : data.finance.monthlyExpenses;
+
+                updateState({
+                    finance: {
+                        ...data.finance,
+                        balance: newBalance,
+                        monthlyIncome: newIncome,
+                        monthlyExpenses: newExpenses,
+                        transactions: [newTx, ...data.finance.transactions]
+                    }
+                });
+
+                setDesc('');
+                setAmount('');
+            };
+
+            const deleteTx = (id) => {
+                const tx = data.finance.transactions.find(t => t.id === id);
+                if (!tx) return;
+                const newBalance = tx.type === 'income' ? data.finance.balance - tx.amount : data.finance.balance + tx.amount;
+                updateState({
+                    finance: {
+                        ...data.finance,
+                        balance: newBalance,
+                        transactions: data.finance.transactions.filter(t => t.id !== id)
+                    }
+                });
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* Балансові картки */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="glass-card p-5 rounded-2xl">
+                            <span className="text-xs text-slate-400 uppercase font-semibold">Поточний Баланс</span>
+                            <div className="text-2xl font-bold text-white mt-1">{data.finance.balance.toLocaleString()} {data.finance.currency}</div>
+                        </div>
+                        <div className="glass-card p-5 rounded-2xl">
+                            <span className="text-xs text-slate-400 uppercase font-semibold">Дохід за місяць</span>
+                            <div className="text-2xl font-bold text-emerald-400 mt-1">+{data.finance.monthlyIncome.toLocaleString()} {data.finance.currency}</div>
+                        </div>
+                        <div className="glass-card p-5 rounded-2xl">
+                            <span className="text-xs text-slate-400 uppercase font-semibold">Витрати за місяць</span>
+                            <div className="text-2xl font-bold text-rose-400 mt-1">-{data.finance.monthlyExpenses.toLocaleString()} {data.finance.currency}</div>
+                        </div>
+                    </div>
+
+                    {/* Додати транзакцію */}
+                    <form onSubmit={addTransaction} className="glass p-5 rounded-2xl flex flex-col sm:flex-row gap-3">
+                        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Опис транзакції..." className="flex-1 glass-input p-2.5 rounded-xl text-sm" />
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Сума..." className="w-32 glass-input p-2.5 rounded-xl text-sm" />
+                        <select value={type} onChange={e => setType(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                            <option value="expense" className="bg-slate-900">Витрата (-)</option>
+                            <option value="income" className="bg-slate-900">Дохід (+)</option>
+                        </select>
+                        <select value={category} onChange={e => setCategory(e.target.value)} className="glass-input p-2.5 rounded-xl text-sm">
+                            <option value="Facility" className="bg-slate-900">Facility / Робота</option>
+                            <option value="Trading" className="bg-slate-900">Trading Bot</option>
+                            <option value="Equipment" className="bg-slate-900">Техніка / Запчастини</option>
+                            <option value="Personal" className="bg-slate-900">Особисті</option>
+                        </select>
+                        <button type="submit" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-xl transition">
+                            Записати
+                        </button>
+                    </form>
+
+                    {/* Історія транзакцій */}
+                    <div className="glass rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 font-bold text-sm text-slate-300">Останні фінансові операції</div>
+                        <div className="divide-y divide-slate-800/60">
+                            {data.finance.transactions.map(t => (
+                                <div key={t.id} className="p-4 flex items-center justify-between hover:bg-slate-900/40 transition">
+                                    <div>
+                                        <div className="font-semibold text-slate-200 text-sm">{t.desc}</div>
+                                        <div className="text-xs text-slate-400">{t.date} • <span className="text-slate-300">{t.category}</span></div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()} ₴
+                                        </span>
+                                        <button onClick={() => deleteTx(t.id)} className="text-slate-500 hover:text-rose-400">
+                                            <i className="ph ph-trash text-base"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
