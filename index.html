@@ -86,11 +86,9 @@
             const [activeTab, setActiveTab] = useState('overview');
             const [loaded, setLoaded] = useState(false);
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-            
-            // Supabase states
-            const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('life_os_supabase_url') || '');
-            const [supabaseKey, setSupabaseKey] = useState(localStorage.getItem('life_os_supabase_key') || '');
+            const [syncId, setSyncId] = useState(localStorage.getItem('life_os_sync_id') || '');
             const [isSyncing, setIsSyncing] = useState(false);
+            const fileInputRef = useRef(null);
 
             useEffect(() => {
                 const syncData = (jsonStr) => {
@@ -125,6 +123,7 @@
                 }
                 setLoaded(true);
 
+                // Автоматична синхронізація між вкладками ПК
                 const handleStorageChange = (e) => {
                     if (e.key === 'life_os_ultimate' && e.newValue) {
                         syncData(e.newValue);
@@ -133,6 +132,7 @@
 
                 window.addEventListener('storage', handleStorageChange);
                 
+                // Збереження даних при згортанні/закритті мобільного браузера
                 const handleVisibility = () => {
                     if (document.visibilityState === 'hidden') {
                         localStorage.setItem('life_os_ultimate', JSON.stringify(data));
@@ -154,69 +154,82 @@
 
             const updateData = (updater) => setData(prev => ({ ...prev, ...updater(prev) }));
 
-            // Supabase Sync functions
-            const saveToSupabase = async () => {
-                if (!supabaseUrl || !supabaseKey) {
-                    alert('Будь ласка, введіть Supabase URL та API Key!');
-                    return;
+            const exportData = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `life_os_backup_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            };
+
+            const importData = (e) => {
+                const fileReader = new FileReader();
+                if (e.target.files[0]) {
+                    fileReader.readAsText(e.target.files[0], "UTF-8");
+                    fileReader.onload = (event) => {
+                        try {
+                            const parsedData = JSON.parse(event.target.result);
+                            setData(parsedData);
+                            alert("Дані успішно імпортовано!");
+                        } catch (error) {
+                            alert("Файл пошкоджений або має невірний формат.");
+                        }
+                    };
                 }
+            };
+
+            // Функції хмарної синхронізації між телефоном та ПК
+            const saveToCloud = async () => {
                 setIsSyncing(true);
                 try {
-                    const cleanUrl = supabaseUrl.replace(/\/$/, '');
-                    const response = await fetch(`${cleanUrl}/rest/v1/life_os`, {
-                        method: 'POST',
-                        headers: {
-                            'apikey': supabaseKey,
-                            'Authorization': `Bearer ${supabaseKey}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'resolution=merge-duplicates'
-                        },
-                        body: JSON.stringify([{ id: 1, content: data }])
-                    });
-                    if (response.ok) {
-                        alert('Дані успішно збережено в Supabase!');
+                    if (!syncId) {
+                        const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        const location = res.headers.get('Location');
+                        if (location) {
+                            const id = location.split('/').pop();
+                            setSyncId(id);
+                            localStorage.setItem('life_os_sync_id', id);
+                            alert(`Хмарний ID створено: ${id}\nВведіть цей ID на іншому пристрої (телефоні/ПК) для синхронізації!`);
+                        }
                     } else {
-                        const err = await response.text();
-                        alert(`Помилка збереження: ${err}\n(Переконайтеся, що створено таблицю 'life_os' з колонками 'id' та 'content')`);
+                        await fetch(`https://jsonblob.com/api/jsonBlob/${syncId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        alert('Дані успішно збережено в хмару!');
                     }
                 } catch(e) {
-                    alert('Помилка мережі при збереженні в Supabase');
+                    alert('Помилка хмарної синхронізації');
                 }
                 setIsSyncing(false);
             };
 
-            const loadFromSupabase = async () => {
-                if (!supabaseUrl || !supabaseKey) {
-                    alert('Будь ласка, введіть Supabase URL та API Key!');
+            const loadFromCloud = async () => {
+                if (!syncId) {
+                    alert('Введіть або збережіть Cloud ID спочатку!');
                     return;
                 }
                 setIsSyncing(true);
                 try {
-                    const cleanUrl = supabaseUrl.replace(/\/$/, '');
-                    const response = await fetch(`${cleanUrl}/rest/v1/life_os?id=eq.1`, {
-                        method: 'GET',
-                        headers: {
-                            'apikey': supabaseKey,
-                            'Authorization': `Bearer ${supabaseKey}`,
-                            'Accept': 'application/json'
-                        }
-                    });
-                    if (response.ok) {
-                        const rows = await response.json();
-                        if (rows && rows.length > 0 && rows[0].content) {
-                            const cloudData = rows[0].content;
-                            setData(cloudData);
-                            localStorage.setItem('life_os_ultimate', JSON.stringify(cloudData));
-                            alert('Дані успішно завантажено з Supabase!');
-                        } else {
-                            alert('Записів не знайдено в таблиці life_os');
-                        }
+                    const res = await fetch(`https://jsonblob.com/api/jsonBlob/${syncId}`);
+                    if (res.ok) {
+                        const cloudData = await res.json();
+                        setData(cloudData);
+                        localStorage.setItem('life_os_ultimate', JSON.stringify(cloudData));
+                        localStorage.setItem('life_os_sync_id', syncId);
+                        alert('Дані успішно завантажено з хмари!');
                     } else {
-                        const err = await response.text();
-                        alert(`Помилка завантаження: ${err}`);
+                        alert('Хмару не знайдено за цим ID');
                     }
                 } catch(e) {
-                    alert('Помилка мережі при завантаженні з Supabase');
+                    alert('Помилка завантаження з хмари');
                 }
                 setIsSyncing(false);
             };
@@ -231,6 +244,7 @@
             return (
                 <div className="flex flex-col md:flex-row h-screen bg-[#09090b] text-zinc-300 relative overflow-hidden">
                     
+                    {/* Мобільний верхній рядок з кнопкою меню */}
                     <div className="md:hidden flex items-center justify-between p-4 bg-[#18181b] border-b border-[#27272a] z-30 flex-shrink-0">
                         <div className="flex items-center gap-2 text-white font-bold text-lg">
                             <i className="ph-fill ph-planet text-indigo-500"></i> Life OS
@@ -240,10 +254,12 @@
                         </button>
                     </div>
 
+                    {/* Затемнення фону на телефоні при відкритому меню */}
                     {isMobileMenuOpen && (
                         <div className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
                     )}
 
+                    {/* Бокове меню */}
                     <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-6 flex justify-between items-center">
                             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -268,36 +284,32 @@
                             <NavBtn active={activeTab === 'finance'} onClick={() => handleTabChange('finance')} icon="ph-wallet" text="Фінанси" />
                         </nav>
 
-                        {/* Supabase Sync Section */}
+                        {/* Синхронізація (Хмарна та Файлова) */}
                         <div className="p-4 border-t border-[#27272a] space-y-2">
-                            <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація з Supabase</div>
+                            <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація (Телефон ⟷ ПК)</div>
                             <input 
                                 type="text" 
-                                placeholder="Supabase URL" 
-                                value={supabaseUrl} 
+                                placeholder="Введіть Cloud ID" 
+                                value={syncId} 
                                 onChange={(e) => {
-                                    setSupabaseUrl(e.target.value);
-                                    localStorage.setItem('life_os_supabase_url', e.target.value);
-                                }} 
-                                className="w-full text-xs py-1.5 px-2 bg-[#18181b]" 
-                            />
-                            <input 
-                                type="password" 
-                                placeholder="Supabase API Key (Anon)" 
-                                value={supabaseKey} 
-                                onChange={(e) => {
-                                    setSupabaseKey(e.target.value);
-                                    localStorage.setItem('life_os_supabase_key', e.target.value);
+                                    setSyncId(e.target.value);
+                                    localStorage.setItem('life_os_sync_id', e.target.value);
                                 }} 
                                 className="w-full text-xs py-1.5 px-2 bg-[#18181b]" 
                             />
                             <div className="flex gap-2">
-                                <button onClick={saveToSupabase} disabled={isSyncing} className="flex-1 btn btn-primary text-xs py-1.5"><i className="ph ph-cloud-arrow-up"></i> {isSyncing ? '...' : 'Зберегти'}</button>
-                                <button onClick={loadFromSupabase} disabled={isSyncing} className="flex-1 btn btn-ghost text-xs py-1.5"><i className="ph ph-cloud-arrow-down"></i> {isSyncing ? '...' : 'Завантажити'}</button>
+                                <button onClick={saveToCloud} disabled={isSyncing} className="flex-1 btn btn-primary text-xs py-1.5"><i className="ph ph-cloud-arrow-up"></i> {isSyncing ? '...' : 'Зберегти'}</button>
+                                <button onClick={loadFromCloud} disabled={isSyncing} className="flex-1 btn btn-ghost text-xs py-1.5"><i className="ph ph-cloud-arrow-down"></i> {isSyncing ? '...' : 'Завантажити'}</button>
+                            </div>
+                            <div className="pt-2 border-t border-zinc-800 flex gap-2">
+                                <button onClick={exportData} className="flex-1 btn btn-ghost text-[10px] py-1"><i className="ph ph-download-simple"></i> Файл</button>
+                                <button onClick={() => fileInputRef.current.click()} className="flex-1 btn btn-ghost text-[10px] py-1"><i className="ph ph-upload-simple"></i> Імпорт</button>
+                                <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
                             </div>
                         </div>
                     </aside>
 
+                    {/* Основний вміст */}
                     <main className="flex-1 overflow-y-auto scroll-smooth relative">
                         <div className="p-4 md:p-8 max-w-7xl mx-auto">
                             {activeTab === 'overview' && <OverviewTab data={data} updateData={updateData} />}
@@ -1127,7 +1139,7 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        const root = ReactDOM.createRoot(getElementById('root') || document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
