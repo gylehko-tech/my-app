@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life OS Ultimate v2</title>
+    <title>Life OS Ultimate v2 - Supabase Sync</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -15,6 +15,9 @@
     
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -86,57 +89,133 @@
             const [activeTab, setActiveTab] = useState('overview');
             const [loaded, setLoaded] = useState(false);
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+            
+            // Supabase State
+            const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('life_os_sb_url') || '');
+            const [supabaseKey, setSupabaseKey] = useState(localStorage.getItem('life_os_sb_key') || '');
+            const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+            const [syncStatus, setSyncStatus] = useState('Локальний режим'); // Локальний режим, Синхронізовано, Синхронізація...
+            const supabaseClientRef = useRef(null);
+
             const fileInputRef = useRef(null);
 
-            useEffect(() => {
-                const syncData = (jsonStr) => {
-                    try { 
-                        const parsed = JSON.parse(jsonStr); 
-                        setData(prev => ({
-                            ...defaultState,
-                            ...parsed,
-                            goals: { ...defaultState.goals, ...(parsed.goals || {}) },
-                            notes: { ...defaultState.notes, ...(parsed.notes || {}) },
-                            links: { ...defaultState.links, ...(parsed.links || {}) },
-                            files: {
-                                work: { ...defaultState.files.work, ...(parsed.files?.work || {}) },
-                                gamedev: { folders: { ...defaultState.files.gamedev.folders, ...(parsed.files?.gamedev?.folders || {}) } }
-                            },
-                            sports: {
-                                plan: parsed.sports?.plan || "",
-                                workouts: parsed.sports?.workouts || [],
-                                weightHistory: parsed.sports?.weightHistory || []
-                            },
-                            finances: {
-                                transactions: parsed.finances?.transactions || []
-                            }
-                        }));
-                    } 
-                    catch(e) { console.error("Data parse error"); }
-                };
+            const parseAndSyncData = (rawJson) => {
+                try {
+                    const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+                    setData(prev => ({
+                        ...defaultState,
+                        ...parsed,
+                        goals: { ...defaultState.goals, ...(parsed.goals || {}) },
+                        notes: { ...defaultState.notes, ...(parsed.notes || {}) },
+                        links: { ...defaultState.links, ...(parsed.links || {}) },
+                        files: {
+                            work: { ...defaultState.files.work, ...(parsed.files?.work || {}) },
+                            gamedev: { folders: { ...defaultState.files.gamedev.folders, ...(parsed.files?.gamedev?.folders || {}) } }
+                        },
+                        sports: {
+                            plan: parsed.sports?.plan || "",
+                            workouts: parsed.sports?.workouts || [],
+                            weightHistory: parsed.sports?.weightHistory || []
+                        },
+                        finances: {
+                            transactions: parsed.finances?.transactions || []
+                        }
+                    }));
+                } catch(e) { console.error("Data parse error", e); }
+            };
 
+            // Ініціалізація Supabase та підписка на зміни
+            useEffect(() => {
                 const saved = localStorage.getItem('life_os_ultimate');
                 if (saved) {
-                    syncData(saved);
+                    parseAndSyncData(saved);
                 }
                 setLoaded(true);
 
-                // Автоматична синхронізація між відкритими вкладками
-                const handleStorageChange = (e) => {
-                    if (e.key === 'life_os_ultimate' && e.newValue) {
-                        syncData(e.newValue);
+                if (supabaseUrl && supabaseKey) {
+                    try {
+                        const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+                        supabaseClientRef.current = client;
+                        setSyncStatus('Підключено до хмари');
+
+                        // Завантаження початкових даних з Supabase
+                        const fetchCloudData = async () => {
+                            const { data: rows, error } = await client
+                                .from('life_os_store')
+                                .select('*')
+                                .eq('id', 'main_data')
+                                .single();
+                            
+                            if (rows && rows.payload) {
+                                parseAndSyncData(rows.payload);
+                                localStorage.setItem('life_os_ultimate', JSON.stringify(rows.payload));
+                            }
+                        };
+                        fetchCloudData();
+
+                        // Підписка на реальний час (Realtime)
+                        const channel = client
+                            .channel('public:life_os_store')
+                            .on('postgres_changes', { event: '*', schema: 'public', table: 'life_os_store', filter: 'id=eq.main_data' }, (payload) => {
+                                if (payload.new && payload.new.payload) {
+                                    parseAndSyncData(payload.new.payload);
+                                    localStorage.setItem('life_os_ultimate', JSON.stringify(payload.new.payload));
+                                }
+                            })
+                            .subscribe();
+
+                        return () => {
+                            client.removeChannel(channel);
+                        };
+                    } catch (err) {
+                        console.error("Supabase init error:", err);
+                        setSyncStatus('Помилка підключення');
                     }
-                };
+                }
+            }, [supabaseUrl, supabaseKey]);
 
-                window.addEventListener('storage', handleStorageChange);
-                return () => window.removeEventListener('storage', handleStorageChange);
-            }, []);
-
+            // Збереження в localStorage та автоматична відправка в Supabase
             useEffect(() => {
                 if (loaded) {
-                    localStorage.setItem('life_os_ultimate', JSON.stringify(data));
+                    const jsonString = JSON.stringify(data);
+                    localStorage.setItem('life_os_ultimate', jsonString);
+
+                    // Якщо налаштований Supabase, оновлюємо дані в хмарі
+                    if (supabaseClientRef.current) {
+                        const pushToCloud = async () => {
+                            setSyncStatus('Синхронізація...');
+                            const { error } = await supabaseClientRef.current
+                                .from('life_os_store')
+                                .upsert({ id: 'main_data', payload: data, updated_at: new Date() });
+                            
+                            if (error) {
+                                console.error('Cloud sync error:', error);
+                                setSyncStatus('Помилка синхронізації');
+                            } else {
+                                setSyncStatus('Синхронізовано з хмарою');
+                            }
+                        };
+                        // Невелика затримка (дебаунс), щоб не спамити запитами при кожному натисканні
+                        const timer = setTimeout(pushToCloud, 1000);
+                        return () => clearTimeout(timer);
+                    }
                 }
             }, [data, loaded]);
+
+            const saveSupabaseCredentials = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const url = fd.get('url').trim();
+                const key = fd.get('key').trim();
+
+                localStorage.setItem('life_os_sb_url', url);
+                localStorage.setItem('life_os_sb_key', key);
+                setSupabaseUrl(url);
+                setSupabaseKey(key);
+                setIsSupabaseModalOpen(false);
+                alert("Налаштування Supabase збережено! Перезавантажте сторінку або зачекайте підключення.");
+                window.location.reload();
+            };
 
             const updateData = (updater) => setData(prev => ({ ...prev, ...updater(prev) }));
 
@@ -158,7 +237,7 @@
                         try {
                             const parsedData = JSON.parse(event.target.result);
                             setData(parsedData);
-                            alert("Дані успішно синхронізовано!");
+                            alert("Дані успішно імпортовано!");
                         } catch (error) {
                             alert("Файл пошкоджений або має невірний формат.");
                         }
@@ -191,7 +270,7 @@
                         <div className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
                     )}
 
-                    {/* Бокове меню (Адаптивне: виїжджає на телефоні, стаціонарне на ПК) */}
+                    {/* Бокове меню */}
                     <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-6 flex justify-between items-center">
                             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -216,14 +295,41 @@
                             <NavBtn active={activeTab === 'finance'} onClick={() => handleTabChange('finance')} icon="ph-wallet" text="Фінанси" />
                         </nav>
 
-                        {/* Синхронізація (Експорт / Імпорт) */}
+                        {/* Синхронізація (Supabase + Експорт / Імпорт) */}
                         <div className="p-4 border-t border-[#27272a] space-y-2">
-                            <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація пристроїв</div>
-                            <button onClick={exportData} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-download-simple"></i> Експорт даних</button>
-                            <button onClick={() => fileInputRef.current.click()} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-upload-simple"></i> Імпорт даних</button>
+                            <div className="flex items-center justify-between text-[10px] text-zinc-500 uppercase font-semibold mb-1">
+                                <span>Синхронізація</span>
+                                <span className={`w-2 h-2 rounded-full ${supabaseUrl ? 'bg-emerald-500' : 'bg-zinc-600'}`} title={syncStatus}></span>
+                            </div>
+                            <button onClick={() => setIsSupabaseModalOpen(true)} className="w-full btn btn-primary text-xs py-2 bg-indigo-600 hover:bg-indigo-500">
+                                <i className="ph ph-cloud-arrow-up"></i> Налаштувати Supabase
+                            </button>
+                            <button onClick={exportData} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-download-simple"></i> Експорт JSON</button>
+                            <button onClick={() => fileInputRef.current.click()} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-upload-simple"></i> Імпорт JSON</button>
                             <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
                         </div>
                     </aside>
+
+                    {/* Модальне вікно налаштування Supabase */}
+                    <Modal isOpen={isSupabaseModalOpen} onClose={() => setIsSupabaseModalOpen(false)} title="Підключення хмари Supabase">
+                        <form onSubmit={saveSupabaseCredentials} className="space-y-4">
+                            <p className="text-xs text-zinc-400 leading-relaxed">
+                                Для підключення комп'ютера та телефону створіть безкоштовний проєкт на <a href="https://supabase.com" target="_blank" className="text-indigo-400 underline">supabase.com</a>, створіть таблицю з назвою <code className="bg-zinc-800 px-1 py-0.5 rounded text-amber-300">life_os_store</code> з двома колонкам: <code className="bg-zinc-800 px-1 py-0.5 rounded text-amber-300">id</code> (text, Primary Key) та <code className="bg-zinc-800 px-1 py-0.5 rounded text-amber-300">payload</code> (jsonb). Введіть ваші ключі доступу нижче:
+                            </p>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Supabase Project URL</label>
+                                <input name="url" defaultValue={supabaseUrl} placeholder="https://xxxxxx.supabase.co" required className="w-full" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Supabase Anon Public Key</label>
+                                <input name="key" defaultValue={supabaseKey} placeholder="eyJhbGciOi..." required className="w-full" />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button type="button" onClick={() => setIsSupabaseModalOpen(false)} className="btn btn-ghost text-xs">Скасувати</button>
+                                <button type="submit" className="btn btn-primary text-xs">Зберегти та підключити</button>
+                            </div>
+                        </form>
+                    </Modal>
 
                     {/* Основний вміст */}
                     <main className="flex-1 overflow-y-auto scroll-smooth relative">
@@ -654,9 +760,9 @@
         };
 
         const GameDevFolders = ({ data, updateData }) => {
-            const [newFolder, useState] = React.useState("");
+            const [newFolder, setNewFolder] = useState("");
             const folders = Object.keys(data.files.gamedev.folders);
-            const [activeFolder, setActiveFolder] = React.useState(folders[0] || "Головна");
+            const [activeFolder, setActiveFolder] = useState(folders[0] || "Головна");
 
             const createFolder = () => {
                 if (!newFolder.trim() || folders.includes(newFolder.trim())) return;
@@ -777,7 +883,7 @@
         };
 
         const SportsTab = ({ data, updateData }) => {
-            const [weight, setWeight] = React.useState("");
+            const [weight, setWeight] = useState("");
             
             const addWeight = () => {
                 if (!weight) return;
@@ -850,7 +956,7 @@
         };
 
         const FinanceTab = ({ data, updateData }) => {
-            const [type, setType] = React.useState('expense');
+            const [type, setType] = useState('expense');
             const categories = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
 
             const addTx = (e) => {
