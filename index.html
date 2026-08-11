@@ -162,7 +162,7 @@
             return (
                 <div className="flex flex-col md:flex-row h-screen bg-[#09090b] text-zinc-300 relative overflow-hidden">
                     
-                    {/* Мобільний верхній рядок з кнопкою меню */}
+                    {/* Мобільний верхній рядок */}
                     <div className="md:hidden flex items-center justify-between p-4 bg-[#18181b] border-b border-[#27272a] z-30 flex-shrink-0">
                         <div className="flex items-center gap-2 text-white font-bold text-lg">
                             <i className="ph-fill ph-planet text-indigo-500"></i> Life OS
@@ -172,12 +172,12 @@
                         </button>
                     </div>
 
-                    {/* Затемнення фону на телефоні при відкритому меню */}
+                    {/* Затемнення фону */}
                     {isMobileMenuOpen && (
                         <div className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
                     )}
 
-                    {/* Бокове меню (Адаптивне: виїжджає на телефоні, стаціонарне на ПК) */}
+                    {/* Бокове меню */}
                     <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-6 flex justify-between items-center">
                             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -202,7 +202,7 @@
                             <NavBtn active={activeTab === 'finance'} onClick={() => handleTabChange('finance')} icon="ph-wallet" text="Фінанси" />
                         </nav>
 
-                        {/* Синхронізація (Експорт / Імпорт) */}
+                        {/* Синхронізація */}
                         <div className="p-4 border-t border-[#27272a] space-y-2">
                             <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація пристроїв</div>
                             <button onClick={exportData} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-download-simple"></i> Експорт даних</button>
@@ -239,7 +239,7 @@
                 if (task.timerActive) {
                     interval = setInterval(() => {
                         const now = Date.now();
-                        const elapsed = Math.floor((now - task.lastStart) / 1000);
+                        const elapsed = Math.floor((now - (task.lastStart || now)) / 1000);
                         setTime((task.actualTime || 0) + elapsed);
                     }, 1000);
                 } else {
@@ -268,6 +268,42 @@
             return { timeFormatted: formatTime(time), toggle, isRunning: task.timerActive };
         };
 
+        const TaskCard = ({ task, onUpdate, onDelete }) => {
+            const { timeFormatted, toggle, isRunning } = useTaskTimer(task, (changes) => onUpdate(task.id, changes));
+
+            return (
+                <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2 hover:border-zinc-500 transition-colors">
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="text-sm font-medium text-white">{task.title}</span>
+                        <button onClick={() => onDelete(task.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
+                    </div>
+                    
+                    <div className="text-xs text-zinc-400 flex items-center gap-2">
+                        <i className="ph ph-calendar"></i> {task.date}
+                        {task.estTime && <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">План: {task.estTime}</span>}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
+                        <div className="flex items-center gap-2">
+                            <button onClick={toggle} className={`p-1.5 rounded-full ${isRunning ? 'bg-amber-500 text-black animate-pulse' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}>
+                                <i className={`ph-fill ${isRunning ? 'ph-pause' : 'ph-play'} text-xs`}></i>
+                            </button>
+                            <span className="font-mono text-xs text-zinc-300">{timeFormatted}</span>
+                        </div>
+                        <select 
+                            value={task.status} 
+                            onChange={(e) => onUpdate(task.id, { status: e.target.value })}
+                            className="text-xs bg-[#27272a] py-1 px-2 rounded text-zinc-300 border-none cursor-pointer"
+                        >
+                            <option value="todo">Очікує</option>
+                            <option value="in_progress">В процесі</option>
+                            <option value="done">Виконано</option>
+                        </select>
+                    </div>
+                </div>
+            );
+        };
+
         const OverviewTab = ({ data, updateData }) => {
             const doneTasks = data.tasks.filter(t => t.status === 'done').length;
             const totalTasks = data.tasks.length;
@@ -279,7 +315,7 @@
                     <h2 className="text-3xl font-bold text-white">Головна панель</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <StatCard icon="ph-check-circle" color="text-emerald-400" title="Прогрес задач" value={`${progress}%`} sub={`${doneTasks} / ${totalTasks} виконано`} />
-                        <StatCard icon="ph-wallet" color="text-indigo-400" title="Капітал" value={`${balance} ₴`} sub="Поточний баланс" />
+                        <StatCard icon="ph-wallet" color="text-indigo-400" title="Капітал" value={`${balance.toLocaleString()} ₴`} sub="Поточний баланс" />
                         <StatCard icon="ph-kanban" color="text-amber-400" title="В роботі" value={data.tasks.filter(t=>t.status==='in_progress').length} sub="Активних задач" />
                         <StatCard icon="ph-barbell" color="text-rose-400" title="Тренування" value={data.sports.workouts.length} sub="Загальна кількість" />
                     </div>
@@ -465,6 +501,183 @@
             );
         };
 
+        const WorkFileManager = ({ data, updateData }) => {
+            const [activeCat, setActiveCat] = useState(WORK_DOC_CATS[0]);
+            const [newDocText, setNewDocText] = useState("");
+
+            const docs = data.files.work?.[activeCat] || [];
+
+            const addDoc = (e) => {
+                e.preventDefault();
+                if (!newDocText.trim()) return;
+                const newDoc = { id: Date.now().toString(), text: newDocText, date: new Date().toISOString().split('T')[0] };
+                updateData(prev => ({
+                    files: {
+                        ...prev.files,
+                        work: {
+                            ...prev.files.work,
+                            [activeCat]: [...(prev.files.work?.[activeCat] || []), newDoc]
+                        }
+                    }
+                }));
+                setNewDocText("");
+            };
+
+            const deleteDoc = (id) => {
+                updateData(prev => ({
+                    files: {
+                        ...prev.files,
+                        work: {
+                            ...prev.files.work,
+                            [activeCat]: (prev.files.work?.[activeCat] || []).filter(d => d.id !== id)
+                        }
+                    }
+                }));
+            };
+
+            return (
+                <div className="glass p-5 rounded-xl space-y-4 mt-8">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <i className="ph ph-folder-open text-indigo-400"></i> Документи та звіти по роботі
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {WORK_DOC_CATS.map(cat => (
+                            <button 
+                                key={cat} 
+                                onClick={() => setActiveCat(cat)} 
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${activeCat === cat ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+                            >
+                                {cat} ({(data.files.work?.[cat] || []).length})
+                            </button>
+                        ))}
+                    </div>
+                    <form onSubmit={addDoc} className="flex gap-2">
+                        <input className="flex-1 text-sm bg-[#18181b]" placeholder={`Додати запис/посилання для "${activeCat}"...`} value={newDocText} onChange={e => setNewDocText(e.target.value)} />
+                        <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i> Додати</button>
+                    </form>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {docs.length === 0 ? <p className="text-zinc-500 text-xs py-2">Записів у цій категорії ще немає</p> : (
+                            docs.map(doc => (
+                                <div key={doc.id} className="flex justify-between items-center p-2.5 bg-[#18181b] rounded border border-[#27272a] text-sm">
+                                    <span className="text-zinc-200">{doc.text}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] text-zinc-500">{doc.date}</span>
+                                        <button onClick={() => deleteDoc(doc.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const GameDevAssetManager = ({ data, updateData }) => {
+            const [folderName, setFolderName] = useState("");
+            const [selectedFolder, setSelectedFolder] = useState("Головна");
+            const [assetName, setAssetName] = useState("");
+
+            const folders = Object.keys(data.files.gamedev?.folders || { "Головна": [] });
+            const assets = data.files.gamedev?.folders?.[selectedFolder] || [];
+
+            const addFolder = (e) => {
+                e.preventDefault();
+                if (!folderName.trim() || data.files.gamedev?.folders?.[folderName]) return;
+                updateData(prev => ({
+                    files: {
+                        ...prev.files,
+                        gamedev: {
+                            folders: {
+                                ...(prev.files.gamedev?.folders || {}),
+                                [folderName]: []
+                            }
+                        }
+                    }
+                }));
+                setSelectedFolder(folderName);
+                setFolderName("");
+            };
+
+            const addAsset = (e) => {
+                e.preventDefault();
+                if (!assetName.trim()) return;
+                const newAsset = { id: Date.now().toString(), name: assetName, date: new Date().toISOString().split('T')[0] };
+                updateData(prev => ({
+                    files: {
+                        ...prev.files,
+                        gamedev: {
+                            folders: {
+                                ...(prev.files.gamedev?.folders || {}),
+                                [selectedFolder]: [...(prev.files.gamedev?.folders?.[selectedFolder] || []), newAsset]
+                            }
+                        }
+                    }
+                }));
+                setAssetName("");
+            };
+
+            const deleteAsset = (id) => {
+                updateData(prev => ({
+                    files: {
+                        ...prev.files,
+                        gamedev: {
+                            folders: {
+                                ...(prev.files.gamedev?.folders || {}),
+                                [selectedFolder]: (prev.files.gamedev?.folders?.[selectedFolder] || []).filter(a => a.id !== id)
+                            }
+                        }
+                    }
+                }));
+            };
+
+            return (
+                <div className="glass p-5 rounded-xl space-y-4 mt-8">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <i className="ph ph-cube text-indigo-400"></i> GameDev Папки та Асети
+                    </h3>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="w-full sm:w-1/3 space-y-3">
+                            <form onSubmit={addFolder} className="flex gap-2">
+                                <input className="flex-1 text-xs bg-[#18181b]" placeholder="Нова папка..." value={folderName} onChange={e=>setFolderName(e.target.value)} />
+                                <button type="submit" className="btn btn-ghost text-xs px-2"><i className="ph ph-plus"></i></button>
+                            </form>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                                {folders.map(f => (
+                                    <button 
+                                        key={f} 
+                                        onClick={() => setSelectedFolder(f)}
+                                        className={`w-full text-left px-3 py-2 rounded text-xs flex justify-between items-center ${selectedFolder === f ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'bg-[#18181b] text-zinc-400 hover:text-white'}`}
+                                    >
+                                        <span className="flex items-center gap-2"><i className="ph ph-folder"></i> {f}</span>
+                                        <span className="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded">{(data.files.gamedev?.folders?.[f] || []).length}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="w-full sm:w-2/3 space-y-3">
+                            <form onSubmit={addAsset} className="flex gap-2">
+                                <input className="flex-1 text-xs bg-[#18181b]" placeholder={`Додати асет у "${selectedFolder}"...`} value={assetName} onChange={e=>setAssetName(e.target.value)} />
+                                <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i></button>
+                            </form>
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {assets.length === 0 ? <p className="text-zinc-500 text-xs py-2">Папка порожня</p> : (
+                                    assets.map(asset => (
+                                        <div key={asset.id} className="flex justify-between items-center p-2 bg-[#18181b] rounded border border-[#27272a] text-xs">
+                                            <span className="text-zinc-200">{asset.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-zinc-500">{asset.date}</span>
+                                                <button onClick={() => deleteAsset(asset.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const SphereTab = ({ sphere, title, data, updateData }) => {
             const tasks = data.tasks.filter(t => t.sphere === sphere);
             const statuses = [
@@ -502,7 +715,7 @@
                         </div>
                         <div className="w-full sm:w-36 flex flex-col gap-1">
                             <label className="text-xs text-zinc-400">Дата</label>
-                            <input type="date" name="date" required />
+                            <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} />
                         </div>
                         <div className="w-full sm:w-36 flex flex-col gap-1">
                             <label className="text-xs text-zinc-400">Оцінка часу</label>
@@ -521,314 +734,115 @@
                                     {tasks.filter(t => t.status === col.id).map(task => (
                                         <TaskCard key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
                                     ))}
-                                    {tasks.filter(t => t.status === col.id).length === 0 && <p className="text-zinc-600 text-xs text-center py-4">Немає задач</p>}
+                                    {tasks.filter(t => t.status === col.id).length === 0 && (
+                                        <div className="text-center py-6 text-xs text-zinc-600">Немає задач</div>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
+
+                    {sphere === 'work' && <WorkFileManager data={data} updateData={updateData} />}
+                    {sphere === 'gamedev' && <GameDevAssetManager data={data} updateData={updateData} />}
 
                     <SphereNotesLinks sphere={sphere} data={data} updateData={updateData} />
-
-                    {sphere === 'work' && <WorkFilesManager data={data} updateData={updateData} />}
-                    {sphere === 'gamedev' && <GameDevFolders data={data} updateData={updateData} />}
-                    {sphere === 'home' && <HomeEvents data={data} updateData={updateData} />}
-                </div>
-            );
-        };
-
-        const TaskCard = ({ task, onUpdate, onDelete }) => {
-            const { timeFormatted, toggle, isRunning } = useTaskTimer(task, (updates) => onUpdate(task.id, updates));
-
-            return (
-                <div className={`p-4 rounded-lg border flex flex-col gap-3 transition-colors ${isRunning ? 'bg-indigo-900/20 border-indigo-500' : 'bg-[#18181b] border-[#27272a] hover:border-zinc-600'}`}>
-                    <div className="flex justify-between items-start gap-2">
-                        <h4 className="font-medium text-zinc-200 break-words flex-1 leading-tight">{task.title}</h4>
-                        <button onClick={() => onDelete(task.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-xs text-zinc-400">
-                        <span className="flex items-center gap-1"><i className="ph ph-calendar"></i> {task.date}</span>
-                        {task.estTime && <span className="flex items-center gap-1"><i className="ph ph-hourglass"></i> {task.estTime}</span>}
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-[#27272a] pt-3 mt-1">
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggle} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isRunning ? 'bg-rose-500/20 text-rose-500 hover:bg-rose-500/40' : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/40'}`}>
-                                <i className={`ph-fill ${isRunning ? 'ph-pause' : 'ph-play'}`}></i>
-                            </button>
-                            <span className={`font-mono text-sm ${isRunning ? 'text-indigo-400 font-bold' : 'text-zinc-400'}`}>{timeFormatted}</span>
-                        </div>
-                        
-                        <select 
-                            className="bg-transparent border-none text-xs text-zinc-300 cursor-pointer focus:ring-0 p-0"
-                            value={task.status} 
-                            onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-                        >
-                            <option value="todo">Очікує</option>
-                            <option value="in_progress">В процесі</option>
-                            <option value="done">Виконано</option>
-                        </select>
-                    </div>
-                </div>
-            );
-        };
-
-        const WorkFilesManager = ({ data, updateData }) => {
-            const [cat, setCat] = useState("Отчет");
-
-            const handleUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const newFile = { id: Date.now().toString(), name: file.name, type: file.type, data: ev.target.result };
-                    updateData(prev => {
-                        const copy = { ...prev };
-                        copy.files.work[cat].push(newFile);
-                        return copy;
-                    });
-                };
-                reader.readAsDataURL(file);
-            };
-
-            const deleteFile = (id) => {
-                updateData(prev => {
-                    const copy = { ...prev };
-                    copy.files.work[cat] = copy.files.work[cat].filter(f => f.id !== id);
-                    return copy;
-                });
-            };
-
-            const files = data.files.work[cat] || [];
-
-            return (
-                <div className="glass p-5 rounded-xl mt-8 space-y-4">
-                    <h3 className="text-xl font-bold flex items-center gap-2"><i className="ph ph-folder"></i> Документи & Файли</h3>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                        {WORK_DOC_CATS.map(c => (
-                            <button key={c} onClick={() => setCat(c)} className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-all ${cat === c ? 'bg-indigo-600 text-white font-medium' : 'bg-[#18181b] text-zinc-400 hover:bg-zinc-800'}`}>{c}</button>
-                        ))}
-                    </div>
-                    
-                    <div className="p-4 border border-dashed border-[#27272a] rounded-xl text-center relative hover:bg-zinc-800/30 transition-colors">
-                        <input type="file" onChange={handleUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                        <div className="text-zinc-500 flex flex-col items-center gap-2">
-                            <i className="ph ph-upload-simple text-3xl"></i>
-                            <p className="text-sm">Натисніть або перетягніть файл для завантаження в "{cat}"</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        {files.map(f => (
-                            <div key={f.id} className="bg-[#18181b] p-3 rounded-lg border border-[#27272a] flex flex-col">
-                                <div className="flex-1 overflow-hidden">
-                                    {f.type.startsWith('image/') ? 
-                                        <img src={f.data} className="w-full h-24 object-cover rounded mb-2" /> : 
-                                        <div className="w-full h-24 bg-zinc-800 rounded mb-2 flex items-center justify-center text-4xl text-zinc-600"><i className="ph ph-file-text"></i></div>
-                                    }
-                                    <p className="text-xs truncate text-zinc-300" title={f.name}>{f.name}</p>
-                                </div>
-                                <div className="flex justify-between mt-3 pt-2 border-t border-zinc-800">
-                                    <a href={f.data} download={f.name} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><i className="ph ph-download-simple"></i> Скачати</a>
-                                    <button onClick={() => deleteFile(f.id)} className="text-xs text-rose-500 hover:text-rose-400"><i className="ph ph-trash"></i></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        const GameDevFolders = ({ data, updateData }) => {
-            const [newFolder, setNewFolder] = useState("");
-            const folders = Object.keys(data.files.gamedev.folders);
-            const [activeFolder, setActiveFolder] = useState(folders[0] || "Головна");
-
-            const createFolder = () => {
-                if (!newFolder.trim() || folders.includes(newFolder.trim())) return;
-                updateData(prev => {
-                    const copy = { ...prev };
-                    copy.files.gamedev.folders[newFolder.trim()] = [];
-                    return copy;
-                });
-                setNewFolder("");
-            };
-
-            const handleUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const newFile = { id: Date.now().toString(), name: file.name, type: file.type, data: ev.target.result };
-                    updateData(prev => {
-                        const copy = { ...prev };
-                        copy.files.gamedev.folders[activeFolder].push(newFile);
-                        return copy;
-                    });
-                };
-                reader.readAsDataURL(file);
-            };
-
-            const deleteFile = (id) => {
-                updateData(prev => {
-                    const copy = { ...prev };
-                    copy.files.gamedev.folders[activeFolder] = copy.files.gamedev.folders[activeFolder].filter(f => f.id !== id);
-                    return copy;
-                });
-            };
-
-            const files = data.files.gamedev.folders[activeFolder] || [];
-
-            return (
-                <div className="glass p-5 rounded-xl mt-8 space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <h3 className="text-xl font-bold flex items-center gap-2"><i className="ph ph-folders"></i> Ресурси (Папки)</h3>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <input value={newFolder} onChange={e=>setNewFolder(e.target.value)} placeholder="Назва папки" className="py-1 px-3 text-sm bg-[#18181b] flex-1 sm:flex-none" />
-                            <button onClick={createFolder} className="btn btn-ghost py-1 px-3"><i className="ph ph-plus"></i></button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-2 flex-wrap pb-2 border-b border-[#27272a]">
-                        {folders.map(f => (
-                            <button key={f} onClick={() => setActiveFolder(f)} className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${activeFolder === f ? 'bg-indigo-600 text-white font-medium' : 'bg-[#18181b] text-zinc-400 hover:bg-zinc-800'}`}><i className="ph-fill ph-folder"></i> {f}</button>
-                        ))}
-                    </div>
-
-                    <div className="flex items-center gap-4 py-2">
-                        <label className="btn btn-primary cursor-pointer text-sm">
-                            <i className="ph ph-upload-simple"></i> Завантажити файл
-                            <input type="file" onChange={handleUpload} className="hidden" />
-                        </label>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {files.map(f => (
-                            <div key={f.id} className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] group relative">
-                                {f.type.startsWith('image/') ? 
-                                    <img src={f.data} className="w-full h-24 object-cover rounded mb-2" /> : 
-                                    <div className="w-full h-24 bg-zinc-800 rounded mb-2 flex items-center justify-center text-3xl text-zinc-600"><i className="ph ph-file-code"></i></div>
-                                }
-                                <p className="text-[10px] truncate text-zinc-400 text-center">{f.name}</p>
-                                
-                                <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
-                                    <a href={f.data} download={f.name} className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-500"><i className="ph ph-download-simple"></i></a>
-                                    <button onClick={() => deleteFile(f.id)} className="p-2 bg-rose-600 text-white rounded-full hover:bg-rose-500"><i className="ph ph-trash"></i></button>
-                                </div>
-                            </div>
-                        ))}
-                        {files.length === 0 && <div className="col-span-full text-zinc-500 text-sm py-8 text-center">Папка порожня</div>}
-                    </div>
-                </div>
-            );
-        };
-
-        const HomeEvents = ({ data, updateData }) => {
-            const addEvent = (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const ev = { id: Date.now().toString(), title: fd.get('title'), date: fd.get('date'), type: fd.get('type') };
-                updateData(prev => ({ events: [...prev.events, ev] }));
-                e.target.reset();
-            };
-            const deleteEvent = (id) => updateData(prev => ({ events: prev.events.filter(e => e.id !== id) }));
-
-            return (
-                <div className="glass p-5 rounded-xl mt-8">
-                    <h3 className="text-xl font-bold flex items-center gap-2 mb-4"><i className="ph ph-calendar-star"></i> Важливі події (Календар)</h3>
-                    <form onSubmit={addEvent} className="flex flex-col sm:flex-row gap-3 mb-6 items-end">
-                        <div className="flex-1 w-full flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400">Що за подія?</label>
-                            <input name="title" required placeholder="Напр. День народження" className="bg-[#18181b]" />
-                        </div>
-                        <div className="w-full sm:w-40 flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400">Дата</label>
-                            <input type="date" name="date" required className="bg-[#18181b]" />
-                        </div>
-                        <button type="submit" className="btn btn-primary w-full sm:w-auto"><i className="ph ph-plus"></i></button>
-                    </form>
-                    <div className="space-y-2">
-                        {data.events.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(e => (
-                            <div key={e.id} className="flex justify-between items-center p-3 bg-[#18181b] border border-[#27272a] rounded-lg">
-                                <div>
-                                    <span className="text-amber-400 font-bold mr-3">{e.date}</span>
-                                    <span>{e.title}</span>
-                                </div>
-                                <button onClick={() => deleteEvent(e.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-x"></i></button>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             );
         };
 
         const SportsTab = ({ data, updateData }) => {
-            const [weight, setWeight] = useState("");
-            
-            const addWeight = () => {
-                if (!weight) return;
-                const entry = { id: Date.now().toString(), date: new Date().toLocaleDateString('uk-UA'), weight: parseFloat(weight) };
-                updateData(prev => ({ sports: { ...prev.sports, weightHistory: [...(prev.sports.weightHistory || []), entry] } }));
-                setWeight("");
-            };
+            const [workoutTitle, setWorkoutTitle] = useState("");
+            const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0]);
+            const [workoutDuration, setWorkoutDuration] = useState("");
+            const [weightValue, setWeightValue] = useState("");
+            const [weightDate, setWeightDate] = useState(new Date().toISOString().split('T')[0]);
 
             const addWorkout = (e) => {
                 e.preventDefault();
-                const fd = new FormData(e.target);
-                const w = { id: Date.now().toString(), title: fd.get('title'), date: new Date().toLocaleDateString('uk-UA') };
-                updateData(prev => ({ sports: { ...prev.sports, workouts: [w, ...(prev.sports.workouts || [])] } }));
-                e.target.reset();
+                if (!workoutTitle.trim()) return;
+                const newW = {
+                    id: Date.now().toString(),
+                    title: workoutTitle,
+                    date: workoutDate,
+                    duration: workoutDuration || "45 хв"
+                };
+                updateData(prev => ({ sports: { ...prev.sports, workouts: [newW, ...(prev.sports.workouts || [])] } }));
+                setWorkoutTitle("");
+                setWorkoutDuration("");
             };
 
-            const weightHistory = data.sports?.weightHistory || [];
-            const workouts = data.sports?.workouts || [];
+            const addWeight = (e) => {
+                e.preventDefault();
+                if (!weightValue) return;
+                const newEntry = { id: Date.now().toString(), date: weightDate, weight: parseFloat(weightValue) };
+                updateData(prev => ({ sports: { ...prev.sports, weightHistory: [newEntry, ...(prev.sports.weightHistory || [])] } }));
+                setWeightValue("");
+            };
+
+            const deleteWorkout = (id) => updateData(prev => ({ sports: { ...prev.sports, workouts: prev.sports.workouts.filter(w => w.id !== id) } }));
+            const deleteWeight = (id) => updateData(prev => ({ sports: { ...prev.sports, weightHistory: prev.sports.weightHistory.filter(w => w.id !== id) } }));
 
             return (
-                <div className="space-y-6">
-                    <h2 className="text-3xl font-bold text-white mb-6">Спорт та Здоров'я</h2>
+                <div className="space-y-8 animate-fade-in">
+                    <h2 className="text-3xl font-bold text-white">Спорт & Здоров'я</h2>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="glass p-5 rounded-xl flex flex-col h-[400px]">
-                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><i className="ph ph-clipboard-text"></i> Програма тренувань</h3>
+                        {/* План тренувань */}
+                        <div className="glass p-5 rounded-xl flex flex-col h-[280px]">
+                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><i className="ph ph-clipboard-text text-rose-400"></i> План тренувань</h3>
                             <textarea 
                                 className="flex-1 resize-none bg-[#18181b]" 
-                                placeholder="Опишіть програму..."
-                                value={data.sports?.plan || ""}
+                                placeholder="Опишіть ваш графік тренувань (наприклад: Пн/Ср/Пт - Силове, Вт/Чт - Кардіо)..."
+                                value={data.sports.plan || ""}
                                 onChange={(e) => updateData(prev => ({ sports: { ...prev.sports, plan: e.target.value } }))}
                             />
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="glass p-5 rounded-xl">
-                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><i className="ph ph-scales"></i> Трекінг ваги</h3>
-                                <div className="flex gap-2 mb-4">
-                                    <input type="number" step="0.1" value={weight} onChange={e=>setWeight(e.target.value)} placeholder="Вага (кг)" className="w-32 bg-[#18181b]" />
-                                    <button onClick={addWeight} className="btn btn-primary">Записати</button>
-                                </div>
-                                <div className="flex gap-2 overflow-x-auto pb-2">
-                                    {weightHistory.slice(-10).map(w => (
-                                        <div key={w.id} className="bg-[#18181b] px-4 py-2 border border-[#27272a] rounded-lg text-center min-w-[80px]">
-                                            <div className="text-xs text-zinc-500">{w.date}</div>
-                                            <div className="font-bold text-amber-400">{w.weight}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="glass p-5 rounded-xl">
-                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><i className="ph ph-notebook"></i> Журнал тренувань</h3>
-                                <form onSubmit={addWorkout} className="flex gap-2 mb-4">
-                                    <input name="title" required placeholder="Що робили?" className="flex-1 bg-[#18181b]" />
-                                    <button type="submit" className="btn btn-primary"><i className="ph ph-plus"></i></button>
-                                </form>
-                                <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                                    {workouts.map(w => (
-                                        <div key={w.id} className="flex justify-between p-2 bg-[#18181b] rounded border border-[#27272a]">
-                                            <span className="text-sm">{w.title}</span>
+                        {/* Контроль ваги */}
+                        <div className="glass p-5 rounded-xl flex flex-col h-[280px]">
+                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><i className="ph ph-scales text-rose-400"></i> Контроль ваги</h3>
+                            <form onSubmit={addWeight} className="flex gap-2 mb-3">
+                                <input type="number" step="0.1" placeholder="Вага (кг)" required className="w-28 text-sm" value={weightValue} onChange={e=>setWeightValue(e.target.value)} />
+                                <input type="date" required className="text-sm flex-1" value={weightDate} onChange={e=>setWeightDate(e.target.value)} />
+                                <button type="submit" className="btn btn-primary text-xs"><i className="ph ph-plus"></i></button>
+                            </form>
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                                {(data.sports.weightHistory || []).map(w => (
+                                    <div key={w.id} className="flex justify-between items-center p-2 bg-[#18181b] rounded text-sm border border-[#27272a]">
+                                        <span className="font-bold text-white">{w.weight} кг</span>
+                                        <div className="flex items-center gap-3">
                                             <span className="text-xs text-zinc-500">{w.date}</span>
+                                            <button onClick={() => deleteWeight(w.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Журнал тренувань */}
+                    <div className="glass p-5 rounded-xl space-y-4">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2"><i className="ph ph-activity text-rose-400"></i> Журнал тренувань</h3>
+                        <form onSubmit={addWorkout} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <input className="sm:col-span-2 text-sm" placeholder="Назва тренування (Груди/Трицепс, Біг...)" required value={workoutTitle} onChange={e=>setWorkoutTitle(e.target.value)} />
+                            <input type="date" className="text-sm" required value={workoutDate} onChange={e=>setWorkoutDate(e.target.value)} />
+                            <input className="text-sm" placeholder="Тривалість" value={workoutDuration} onChange={e=>setWorkoutDuration(e.target.value)} />
+                            <button type="submit" className="btn btn-primary sm:col-span-4"><i className="ph ph-plus-circle"></i> Записати тренування</button>
+                        </form>
+                        <div className="space-y-2 mt-4 max-h-72 overflow-y-auto pr-1">
+                            {(data.sports.workouts || []).map(w => (
+                                <div key={w.id} className="flex justify-between items-center p-3 bg-[#18181b] rounded-lg border border-[#27272a]">
+                                    <div>
+                                        <div className="font-semibold text-white text-sm">{w.title}</div>
+                                        <div className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
+                                            <span><i className="ph ph-calendar"></i> {w.date}</span>
+                                            <span>•</span>
+                                            <span><i className="ph ph-clock"></i> {w.duration}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => deleteWorkout(w.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -837,204 +851,117 @@
 
         const FinanceTab = ({ data, updateData }) => {
             const [type, setType] = useState('expense');
-            const categories = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+            const [amount, setAmount] = useState('');
+            const [category, setCategory] = useState(EXPENSE_CATS[0]);
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const [comment, setComment] = useState('');
 
-            const addTx = (e) => {
+            useEffect(() => {
+                setCategory(type === 'expense' ? EXPENSE_CATS[0] : INCOME_CATS[0]);
+            }, [type]);
+
+            const transactions = data.finances?.transactions || [];
+
+            const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
+            const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
+            const netBalance = totalIncome - totalExpense;
+
+            const addTransaction = (e) => {
                 e.preventDefault();
-                const fd = new FormData(e.target);
-                const tx = {
+                if (!amount || Number(amount) <= 0) return;
+                const newT = {
                     id: Date.now().toString(),
                     type,
-                    amount: parseFloat(fd.get('amount')),
-                    category: fd.get('category'),
-                    desc: fd.get('desc') || '',
-                    date: new Date().toLocaleDateString('uk-UA')
+                    amount: Number(amount),
+                    category,
+                    date,
+                    comment
                 };
-                updateData(prev => ({ finances: { ...prev.finances, transactions: [tx, ...prev.finances.transactions] } }));
-                e.target.reset();
+                updateData(prev => ({
+                    finances: {
+                        ...prev.finances,
+                        transactions: [newT, ...(prev.finances?.transactions || [])]
+                    }
+                }));
+                setAmount('');
+                setComment('');
             };
 
-            const delTx = (id) => updateData(prev => ({ finances: { ...prev.finances, transactions: prev.finances.transactions.filter(t => t.id !== id) } }));
-
-            const txs = data.finances.transactions || [];
-            const balance = txs.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
-            const totalIn = txs.filter(t=>t.type==='income').reduce((a,b)=>a+b.amount,0);
-            const totalOut = txs.filter(t=>t.type==='expense').reduce((a,b)=>a+b.amount,0);
-
-            const monthlyStats = {};
-            const yearlyStats = {};
-
-            txs.forEach(t => {
-                const dateParts = t.date.replace(/\//g, '.').split('.');
-                if (dateParts.length === 3) {
-                    const monthYear = `${dateParts[1]}.${dateParts[2]}`;
-                    const year = dateParts[2];
-
-                    if (!monthlyStats[monthYear]) {
-                        monthlyStats[monthYear] = { monthYear, incTotal: 0, expTotal: 0, incByCat: {}, expByCat: {} };
+            const deleteTransaction = (id) => {
+                updateData(prev => ({
+                    finances: {
+                        ...prev.finances,
+                        transactions: prev.finances.transactions.filter(t => t.id !== id)
                     }
-                    if (!yearlyStats[year]) {
-                        yearlyStats[year] = { year, incTotal: 0, expTotal: 0 };
-                    }
-
-                    const m = monthlyStats[monthYear];
-                    const y = yearlyStats[year];
-                    const amt = parseFloat(t.amount);
-
-                    if (t.type === 'income') {
-                        m.incTotal += amt;
-                        m.incByCat[t.category] = (m.incByCat[t.category] || 0) + amt;
-                        y.incTotal += amt;
-                    } else {
-                        m.expTotal += amt;
-                        m.expByCat[t.category] = (m.expByCat[t.category] || 0) + amt;
-                        y.expTotal += amt;
-                    }
-                }
-            });
-
-            const sortedMonths = Object.keys(monthlyStats).sort((a,b) => {
-                const [mA, yA] = a.split('.');
-                const [mB, yB] = b.split('.');
-                return new Date(`${yB}-${mB}-01`) - new Date(`${yA}-${mA}-01`);
-            });
-            const sortedYears = Object.keys(yearlyStats).sort((a,b) => b - a);
+                }));
+            };
 
             return (
-                <div className="space-y-6">
-                    <h2 className="text-3xl font-bold text-white mb-6">Фінанси</h2>
+                <div className="space-y-8 animate-fade-in">
+                    <h2 className="text-3xl font-bold text-white">Фінанси</h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div className="glass p-5 rounded-xl border-l-4 border-indigo-500">
-                            <div className="text-sm text-zinc-400 mb-1">Поточний баланс</div>
-                            <div className="text-2xl sm:text-3xl font-bold">{balance.toLocaleString()} ₴</div>
-                        </div>
-                        <div className="glass p-5 rounded-xl border-l-4 border-emerald-500">
-                            <div className="text-sm text-zinc-400 mb-1">Загальний дохід</div>
-                            <div className="text-xl sm:text-2xl font-bold text-emerald-400">+{totalIn.toLocaleString()} ₴</div>
-                        </div>
-                        <div className="glass p-5 rounded-xl border-l-4 border-rose-500">
-                            <div className="text-sm text-zinc-400 mb-1">Загальні витрати</div>
-                            <div className="text-xl sm:text-2xl font-bold text-rose-400">-{totalOut.toLocaleString()} ₴</div>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <StatCard icon="ph-wallet" color="text-indigo-400" title="Капітал / Баланс" value={`${netBalance.toLocaleString()} ₴`} sub="Чистий залишок" />
+                        <StatCard icon="ph-arrow-up-right" color="text-emerald-400" title="Доходи" value={`+${totalIncome.toLocaleString()} ₴`} sub="Всього отримано" />
+                        <StatCard icon="ph-arrow-down-left" color="text-rose-400" title="Витрати" value={`-${totalExpense.toLocaleString()} ₴`} sub="Всього витрачено" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="glass p-5 rounded-xl col-span-1 h-fit">
-                            <h3 className="text-lg font-semibold mb-4">Додати транзакцію</h3>
-                            <form onSubmit={addTx} className="space-y-3">
-                                <div className="flex bg-[#18181b] rounded-lg p-1 border border-[#27272a]">
-                                    <button type="button" onClick={()=>setType('expense')} className={`flex-1 py-1.5 text-sm rounded ${type==='expense'?'bg-rose-500/20 text-rose-400 font-medium':'text-zinc-500'}`}>Витрата</button>
-                                    <button type="button" onClick={()=>setType('income')} className={`flex-1 py-1.5 text-sm rounded ${type==='income'?'bg-emerald-500/20 text-emerald-400 font-medium':'text-zinc-500'}`}>Дохід</button>
-                                </div>
-                                
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs text-zinc-400">Категорія</label>
-                                    <select name="category" required className="bg-[#18181b]">
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
+                    <div className="glass p-5 rounded-xl">
+                        <h3 className="text-lg font-semibold text-white mb-4">Додати транзакцію</h3>
+                        <form onSubmit={addTransaction} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Тип</label>
+                                <select value={type} onChange={e => setType(e.target.value)} className="text-sm">
+                                    <option value="expense">Витрата (-)</option>
+                                    <option value="income">Дохід (+)</option>
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Сума (₴)</label>
+                                <input type="number" step="0.01" required placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} className="text-sm" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Категорія</label>
+                                <select value={category} onChange={e => setCategory(e.target.value)} className="text-sm">
+                                    {(type === 'expense' ? EXPENSE_CATS : INCOME_CATS).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-zinc-400">Дата</label>
+                                <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="text-sm" />
+                            </div>
+                            <div className="flex flex-col gap-1 sm:col-span-2 md:col-span-1">
+                                <label className="text-xs text-zinc-400">Коментар</label>
+                                <input placeholder="Опис..." value={comment} onChange={e => setComment(e.target.value)} className="text-sm" />
+                            </div>
+                            <button type="submit" className="btn btn-primary sm:col-span-2 md:col-span-5"><i className="ph ph-plus-circle"></i> Додати запис</button>
+                        </form>
+                    </div>
 
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs text-zinc-400">Сума (₴)</label>
-                                    <input type="number" name="amount" required min="0.01" step="0.01" placeholder="0.00" className="bg-[#18181b]" />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs text-zinc-400">Коментар</label>
-                                    <input name="desc" placeholder="На що пішли гроші?" className="bg-[#18181b]" />
-                                </div>
-
-                                <button type="submit" className={`w-full btn mt-2 ${type==='expense'?'btn-danger':'btn-primary bg-emerald-600 hover:bg-emerald-500'}`}>
-                                    Додати {type==='expense'?'витрату':'дохід'}
-                                </button>
-                            </form>
-                        </div>
-
-                        <div className="glass p-5 rounded-xl col-span-1 md:col-span-2">
-                            <h3 className="text-lg font-semibold mb-4">Історія транзакцій</h3>
-                            <div className="space-y-2 max-h-[400px] overflow-y-auto scroll-smooth pr-2">
-                                {txs.length === 0 ? <p className="text-zinc-500 text-center py-8">Немає транзакцій</p> : 
-                                    txs.map(t => (
-                                    <div key={t.id} className="flex items-center justify-between p-3 bg-[#18181b] border border-[#27272a] rounded-lg">
+                    <div className="glass p-5 rounded-xl space-y-3">
+                        <h3 className="text-lg font-semibold text-white mb-2">Історія операцій</h3>
+                        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                            {transactions.length === 0 ? <p className="text-zinc-500 text-xs py-4 text-center">Операцій ще немає</p> : (
+                                transactions.map(t => (
+                                    <div key={t.id} className="flex justify-between items-center p-3 bg-[#18181b] rounded-lg border border-[#27272a]">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.type==='income'?'bg-emerald-500/10 text-emerald-500':'bg-rose-500/10 text-rose-500'}`}>
-                                                <i className={`ph ${t.type==='income'?'ph-trend-up':'ph-trend-down'} text-xl`}></i>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${t.type === 'income' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                                <i className={`ph ${t.type === 'income' ? 'ph-arrow-up-right' : 'ph-arrow-down-left'}`}></i>
                                             </div>
                                             <div>
-                                                <div className="font-medium text-zinc-200">{t.category}</div>
-                                                <div className="text-xs text-zinc-500">{t.date} {t.desc ? `• ${t.desc}` : ''}</div>
+                                                <div className="text-sm font-semibold text-white">{t.category} {t.comment && <span className="text-zinc-400 font-normal">({t.comment})</span>}</div>
+                                                <div className="text-[10px] text-zinc-500">{t.date}</div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <div className={`font-bold ${t.type==='income'?'text-emerald-400':'text-rose-400'}`}>
-                                                {t.type==='income'?'+':'-'}{t.amount} ₴
-                                            </div>
-                                            <button onClick={() => delTx(t.id)} className="text-zinc-600 hover:text-rose-500"><i className="ph ph-trash"></i></button>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {t.type === 'income' ? '+' : '-'}{Number(t.amount).toLocaleString()} ₴
+                                            </span>
+                                            <button onClick={() => deleteTransaction(t.id)} className="text-zinc-500 hover:text-rose-500"><i className="ph ph-trash"></i></button>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-[#27272a] space-y-8">
-                        <div>
-                            <h3 className="text-2xl font-bold text-white mb-6">Місячні звіти</h3>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {sortedMonths.length === 0 ? <p className="text-zinc-500">Немає даних для звітів</p> :
-                                 sortedMonths.map(my => {
-                                    const stat = monthlyStats[my];
-                                    return (
-                                        <div key={my} className="glass p-5 rounded-xl border border-[#27272a]">
-                                            <h4 className="text-lg font-bold text-indigo-400 mb-4 text-center">Місяць: {my}</h4>
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <div className="text-emerald-400 font-semibold mb-2 border-b border-[#27272a] pb-1 text-sm">Доходи: +{stat.incTotal.toLocaleString()} ₴</div>
-                                                    <ul className="space-y-1 text-xs">
-                                                        {Object.entries(stat.incByCat).map(([cat, amt]) => (
-                                                            <li key={cat} className="flex justify-between"><span className="text-zinc-400">{cat}</span> <span className="text-zinc-200">{amt.toLocaleString()} ₴</span></li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                                <div>
-                                                    <div className="text-rose-400 font-semibold mb-2 border-b border-[#27272a] pb-1 text-sm">Витрати: -{stat.expTotal.toLocaleString()} ₴</div>
-                                                    <ul className="space-y-1 text-xs">
-                                                        {Object.entries(stat.expByCat).map(([cat, amt]) => (
-                                                            <li key={cat} className="flex justify-between"><span className="text-zinc-400">{cat}</span> <span className="text-zinc-200">{amt.toLocaleString()} ₴</span></li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                 })
-                                }
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-2xl font-bold text-white mb-6">Підсумок за Рік</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {sortedYears.length === 0 ? <p className="text-zinc-500">Немає даних</p> :
-                                 sortedYears.map(y => {
-                                    const stat = yearlyStats[y];
-                                    const net = stat.incTotal - stat.expTotal;
-                                    return (
-                                        <div key={y} className="glass p-5 rounded-xl border border-zinc-700">
-                                            <h4 className="text-xl font-bold text-white mb-4 text-center">Рік: {y}</h4>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm"><span className="text-zinc-400">Всього доходів:</span> <span className="text-emerald-400">+{stat.incTotal.toLocaleString()} ₴</span></div>
-                                                <div className="flex justify-between text-sm"><span className="text-zinc-400">Всього витрат:</span> <span className="text-rose-400">-{stat.expTotal.toLocaleString()} ₴</span></div>
-                                                <div className="flex justify-between font-bold border-t border-zinc-700 pt-3 mt-2">
-                                                    <span className="text-zinc-300">Чистий залишок:</span> 
-                                                    <span className={net >= 0 ? 'text-emerald-500' : 'text-rose-500'}>{net > 0 ? '+' : ''}{net.toLocaleString()} ₴</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
