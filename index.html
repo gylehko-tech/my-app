@@ -192,8 +192,8 @@
                     )}
 
                     {/* Бокове меню (Адаптивне: виїжджає на телефоні, стаціонарне на ПК) */}
-                    <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-6 flex justify-between items-center">
+                    <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass flex flex-col border-r border-[#27272a] transform transition-transform duration-300 md:relative md:translate-x-0 overflow-y-auto ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-6 flex justify-between items-center flex-shrink-0">
                             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <i className="ph-fill ph-planet text-indigo-500"></i> Life OS
                             </h1>
@@ -202,7 +202,7 @@
                             </button>
                         </div>
                         
-                        <nav className="flex-1 px-4 space-y-1 overflow-y-auto scroll-smooth">
+                        <nav className="px-4 space-y-1 pb-4">
                             <NavBtn active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} icon="ph-squares-four" text="Огляд" />
                             <NavBtn active={activeTab === 'calendar'} onClick={() => handleTabChange('calendar')} icon="ph-calendar-blank" text="Календар" />
                             
@@ -217,7 +217,7 @@
                         </nav>
 
                         {/* Синхронізація (Експорт / Імпорт) */}
-                        <div className="p-4 border-t border-[#27272a] space-y-2">
+                        <div className="p-4 border-t border-[#27272a] space-y-2 mt-auto pb-12 md:pb-4">
                             <div className="text-[10px] text-zinc-500 uppercase font-semibold mb-1">Синхронізація пристроїв</div>
                             <button onClick={exportData} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-download-simple"></i> Експорт даних</button>
                             <button onClick={() => fileInputRef.current.click()} className="w-full btn btn-ghost text-xs py-2"><i className="ph ph-upload-simple"></i> Імпорт даних</button>
